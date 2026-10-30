@@ -360,7 +360,6 @@ function openRecipe(id) {
     ${r.source ? `<a class="src" href="${esc(r.source)}" target="_blank" rel="noopener">Voir la source ↗</a>` : ''}
     <div class="dlg-foot">
       <span class="hint">${r.ajoute_par ? 'Ajouté par ' + esc(r.ajoute_par) : ''}${r.created_at ? ' · ' + dateFr(r.created_at) : ''}</span>
-      <button class="danger" type="button" data-del="${esc(r.id)}">Supprimer</button>
     </div>`;
   $('detail').showModal();
 }
@@ -373,19 +372,6 @@ $('dBody').addEventListener('change', e => {
   arr = cb.checked ? [...new Set([...arr, idx])] : arr.filter(i => i !== idx);
   writeChecked(id, arr);
   cb.parentElement.querySelector('span').classList.toggle('done', cb.checked);
-});
-
-$('dBody').addEventListener('click', async e => {
-  const del = e.target.closest('[data-del]');
-  if (!del) return;
-  if (!confirm('Supprimer cette recette ?')) return;
-  try {
-    await api(`${TABLE}?id=eq.${encodeURIComponent(del.dataset.del)}`, { method: 'DELETE' });
-    $('detail').close();
-    await loadRecipes();
-  } catch (err) {
-    alert('Suppression impossible : ' + err.message);
-  }
 });
 
 $('grid').addEventListener('click', e => {
