@@ -220,6 +220,7 @@ textarea.f{min-height:88px;resize:vertical}
       <div class="sub">Ce qu'on cuisine, ce qu'on aime, ce qu'on veut refaire</div>
     </div>
     <div class="head-btns">
+      <button class="btn-liste" id="sauvegarder" type="button" title="Télécharger une copie de toutes les recettes">💾 Sauvegarde</button>
       <button class="btn-liste" id="openListe" type="button">🛒 Liste de courses <span class="n" id="nListe">0</span></button>
       <button class="btn-add" id="openAdd" type="button">+ <span class="fab-text">Ajouter</span></button>
     </div>
@@ -1357,6 +1358,20 @@ $('menuFiche').addEventListener('click', async e => {
 // ---- Rafraîchissement : au chargement, au retour sur l'onglet, puis toutes les minutes ----
 document.addEventListener('visibilitychange', () => { if (!document.hidden) loadRecipes(); });
 setInterval(() => { if (!document.querySelector('dialog[open]')) loadRecipes(); }, 60000);
+// ---- Sauvegarde : télécharge une copie de toutes les recettes (fichier JSON) ----
+$('sauvegarder').addEventListener('click', () => {
+  if (!state.recipes.length) { alert('Aucune recette à sauvegarder pour le moment.'); return; }
+  const contenu = JSON.stringify(state.recipes, null, 2);
+  const url = URL.createObjectURL(new Blob([contenu], { type: 'application/json' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `recettes-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+});
+
 // Installation comme application (si le navigateur le permet)
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
