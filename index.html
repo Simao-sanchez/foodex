@@ -172,6 +172,11 @@ textarea.f{min-height:88px;resize:vertical}
 .liste-actions button{border:1px solid var(--line);background:var(--chip);border-radius:10px;padding:9px 14px;cursor:pointer;font-weight:600}
 .liste-actions button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
 .vide{color:var(--muted);text-align:center;padding:24px 0}
+.cumul{border-top:2px solid var(--line);margin-top:6px;padding-top:12px;margin-bottom:18px}
+.cumul-titre{font-size:1.05rem;margin:0 0 6px}
+.rayon{margin-bottom:12px}
+.rayon h4{font-size:.85rem;text-transform:uppercase;letter-spacing:.04em;color:var(--accent);margin:0 0 4px}
+.src{color:var(--muted);font-style:normal;font-size:.8rem}
 #menuFiche[hidden],#menuConfig[hidden]{display:none}
 .menu-jour{border-top:1px solid var(--line);padding-top:10px;margin-top:10px}
 .menu-jour h3,.fiche-jour h3{font-size:1rem;margin:0 0 6px}
@@ -607,6 +612,20 @@ function ratioDe(r) {
 }
 
 // ---- Liste de courses ----
+// Rayons des courses, dans l'ordre du magasin. Premier rayon dont le mot-clé correspond.
+const RAYONS = [
+  ['Surgelés', /surgel/i],
+  ['Viandes & poissons', /boeuf|bœuf|porc|poulet|veau|agneau|lardon|saucisse|knacki|jambon|bacon|poisson|crevette|saumon|thon|poulpe|colin|cabillaud|filet|cuisse|foie|collet|crépine|poitrine|bifteck|rumsteck|canard|dinde/i],
+  ['Frais & œufs', /lait(?! de coco)|crème|beurre|yaourt|mascarpone|gruyère|fromage|parmesan|œuf|oeuf|tofu|kiri|ricotta/i],
+  ['Fruits & légumes', /oignon|\bail\b|carotte|courgette|poivron|tomate|concombre|salade|persil|ciboule|ciboulette|coriandre|menthe|gingembre|citron|\blime\b|yuzu|pomme(?! de terre)|banane|ananas|melon|daikon|\bchou\b|brocoli|champignon|haricot|petits pois|poireau|aubergine|piment|échalote|pomme de terre|patate|edamame|épinard|radis|avocat|shiso|cébette|cornichon|kimchi|légume|noix de coco|olive/i],
+  ['Épices & aromates', /\bsel\b|poivre|cumin|paprika|curcuma|garam|curry|cannelle|muscade|origan|thym|laurier|romarin|gochugaru|vanille|épice|bouquet garni|pincée|basilic/i],
+  ['Épicerie & sauces', /sauce|soja|mirin|saké|vinaigre|huile|moutarde|miso|dashi|bouillon|knorr|cube|maggi|gochujang|toubanjan|ketchup|sirop|miel|farine|sucre|levure|maïzena|fécule|amidon|riz|nouille|pâte|semoule|boulgour|lentille|pois chiche|conserve|concassée|concentré|lasagne|noix|amande|noisette|sésame|graines|chocolat|cacao|pépites|rhum|pain|tortilla|gluten|tahini|pandan|matcha|thé|\bvin\b|cassonade|lait de coco|kombu|nori|beni shoga|bicarbonate|\beau\b|mochi|tapioca|dango|eau/i]
+];
+function rayonDe(texte) {
+  const f = RAYONS.find(([, re]) => re.test(String(texte)));
+  return f ? f[0] : 'Autres';
+}
+
 function renderListe() {
   const chosen = selection.map(id => state.recipes.find(r => r.id === id)).filter(Boolean);
   if (!chosen.length) {
@@ -627,7 +646,25 @@ function renderListe() {
       ${items ? `<ul class="ing">${items}</ul>` : '<div class="hint">Pas d’ingrédients renseignés.</div>'}
     </div>`;
   }).join('');
-  $('lBody').innerHTML = blocs + `
+  // Zone cumulée : tous les ingrédients, regroupés par rayon
+  const parRayon = {};
+  chosen.forEach(r => (r.ingredients || []).forEach((i, idx) => {
+    const rayon = rayonDe(i);
+    (parRayon[rayon] = parRayon[rayon] || []).push({ r, i, idx });
+  }));
+  const ordre = [...RAYONS.map(x => x[0]), 'Autres'];
+  const cumul = ordre.filter(n => parRayon[n]).map(n => `
+    <div class="rayon"><h4>${esc(n)}</h4><ul class="ing">${parRayon[n].map(({ r, i, idx }) => {
+      const k = `${r.id}|${idx}`;
+      const ok = !!coches[k];
+      return `<li><label>
+        <input type="checkbox" data-k="${esc(k)}" ${ok ? 'checked' : ''}>
+        <span class="${ok ? 'done' : ''}">${esc(i)} <em class="src">· ${esc(r.titre)}</em></span>
+      </label></li>`;
+    }).join('')}</ul></div>`).join('');
+  const zoneCumul = cumul ? `<div class="cumul"><h3 class="cumul-titre">Tout cumulé, par rayon</h3>${cumul}</div>` : '';
+
+  $('lBody').innerHTML = blocs + zoneCumul + `
     <div class="liste-actions">
       <button class="primary" type="button" id="copier">Copier la liste</button>
       <button type="button" id="cocherTout">Tout décocher</button>
@@ -647,7 +684,11 @@ $('lBody').addEventListener('change', e => {
   const cb = e.target.closest('input[type="checkbox"]'); if (!cb) return;
   coches[cb.dataset.k] = cb.checked;
   lsSet('liste-cochees', coches);
-  cb.parentElement.querySelector('span').classList.toggle('done', cb.checked);
+  // même ingrédient affiché par recette et dans la zone cumulée : on synchronise les deux
+  $('lBody').querySelectorAll(`input[data-k="${cb.dataset.k}"]`).forEach(x => {
+    x.checked = cb.checked;
+    x.parentElement.querySelector('span').classList.toggle('done', cb.checked);
+  });
 });
 
 $('lBody').addEventListener('click', async e => {
