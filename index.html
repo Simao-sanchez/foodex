@@ -957,7 +957,11 @@ const estPiquant = r => etiquette(r, 'p') ?? /piment|piquant|gochujang|curry|har
 const estChoco = r => etiquette(r, 'c') ?? /chocolat|cacao/i.test(texteRecette(r));
 const estLeger = r => etiquette(r, 'l') ?? ((r.temps && r.temps <= 30) || /salade|légume|soupe|tofu|concombre|bouillon|poisson|taboul/i.test(texteRecette(r)));
 
+// Les sauces et préparations de base ne sont pas des plats : exclues du quiz
+const estSauce = r => /sauce|vinaigrette|pâte de curry|crème anglaise/i.test(r.titre || '') && !/negimiso|hiyashi chuka/i.test(r.titre || '');
+
 function correspond(r, rep) {
+  if (estSauce(r)) return false;
   if (rep.type && rep.type !== 'tous' && r.type !== rep.type) return false;
   if (rep.piment && rep.piment !== 'tous' && (rep.piment === 'oui') !== estPiquant(r)) return false;
   if (rep.chocolat && rep.chocolat !== 'tous' && (rep.chocolat === 'oui') !== estChoco(r)) return false;
