@@ -326,6 +326,10 @@ textarea.f{min-height:88px;resize:vertical}
         <button class="chip" type="button" data-v="travail" aria-pressed="false">Travail (repas du soir)</button>
         <button class="chip" type="button" data-v="vacances" aria-pressed="false">Vacances (midi et soir)</button>
       </div>
+      <div class="group" id="mVue" style="margin:0 0 12px">
+        <button class="chip" type="button" data-v="cette" aria-pressed="false">Cette semaine</button>
+        <button class="chip" type="button" data-v="prochaine" aria-pressed="false">Semaine prochaine</button>
+      </div>
       <label class="l" for="mPers">Nombre de personnes</label>
       <input class="f" id="mPers" type="number" min="1" value="2" style="max-width:120px;margin-bottom:12px">
       <div id="mJours"></div>
@@ -1176,10 +1180,16 @@ function cleJour(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 // Aujourd'hui jusqu'à dimanche inclus
-function joursRestants() {
-  const debut = new Date(); debut.setHours(12, 0, 0, 0);
-  const fin = (7 - debut.getDay()) % 7;
-  return Array.from({ length: fin + 1 }, (_, i) => { const d = new Date(debut); d.setDate(debut.getDate() + i); return d; });
+// « cette » : aujourd'hui → dimanche ; « prochaine » : lundi → dimanche de la semaine suivante
+function joursRestants(vue = menu.vue) {
+  const aujourdhui = new Date(); aujourdhui.setHours(12, 0, 0, 0);
+  const dow = aujourdhui.getDay();
+  if (vue === 'prochaine') {
+    const lundi = new Date(aujourdhui); lundi.setDate(aujourdhui.getDate() - ((dow + 6) % 7) + 7);
+    return Array.from({ length: 7 }, (_, i) => { const d = new Date(lundi); d.setDate(lundi.getDate() + i); return d; });
+  }
+  const fin = (7 - dow) % 7;
+  return Array.from({ length: fin + 1 }, (_, i) => { const d = new Date(aujourdhui); d.setDate(aujourdhui.getDate() + i); return d; });
 }
 function libelleJour(d) {
   const s = `${JOURS_FR[d.getDay()]} ${d.getDate()} ${MOIS_FR[d.getMonth()]}`;
@@ -1202,20 +1212,23 @@ function montrerMenu(vue) {
 
 function renderMenuConfig() {
   $('mMode').querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', String(c.dataset.v === menu.mode)));
+  $('mVue').querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', String(c.dataset.v === (menu.vue || 'cette'))));
   $('mPers').value = menu.personnes;
-  // on ne garde que les jours de la semaine en cours
-  const cles = new Set(joursRestants().map(cleJour));
+  // on ne garde que les jours des deux semaines affichées
+  const cles = new Set([...joursRestants('cette'), ...joursRestants('prochaine')].map(cleJour));
   Object.keys(menu.repas).forEach(k => { if (!cles.has(k)) delete menu.repas[k]; });
   saveMenu();
   if (!menu.mode) {
     $('mJours').innerHTML = '<div class="vide">Choisis travail ou vacances pour commencer.</div>';
     return;
   }
-  const tri = liste => liste.slice().sort((a, b) => String(a.titre).localeCompare(String(b.titre), 'fr'));
+  // favoris (★ souhaits) en premier, puis ordre alphabétique
+  const tri = liste => liste.slice().sort((a, b) =>
+    (souhaitsDe(b).length > 0) - (souhaitsDe(a).length > 0) || String(a.titre).localeCompare(String(b.titre), 'fr'));
   const sales = tri(state.recipes.filter(r => r.type === 'sale'));
   const sucres = tri(state.recipes.filter(r => r.type === 'sucre'));
   const options = (liste, vide, cur) => `<option value="">${vide}</option>` +
-    liste.map(r => `<option value="${esc(r.id)}" ${r.id === cur ? 'selected' : ''}>${esc(r.titre)}</option>`).join('');
+    liste.map(r => `<option value="${esc(r.id)}" ${r.id === cur ? 'selected' : ''}>${souhaitsDe(r).length ? '★ ' : ''}${esc(r.titre)}</option>`).join('');
   $('mJours').innerHTML = joursRestants().map(d => {
     const key = cleJour(d);
     const lignes = creneaux().map(slot => {
@@ -1226,7 +1239,9 @@ function renderMenuConfig() {
         <select class="f" data-jour="${key}" data-slot="${slot}" data-kind="sucre" aria-label="Dessert, ${NOMS_CRENEAU[slot]}">${options(sucres, '— pas de dessert —', sucre)}</select>
       </div>`;
     }).join('');
-    return `<div class="menu-jour"><h3>${libelleJour(d)}</h3>${lignes}</div>`;
+    const note = (menu.notes || {})[key] || '';
+    return `<div class="menu-jour"><h3>${libelleJour(d)}</h3>${lignes}
+      <textarea class="f" data-note="${key}" placeholder="Notes (resto, invités, courses à prendre…)" style="min-height:44px;margin-top:4px">${esc(note)}</textarea></div>`;
   }).join('');
 }
 
@@ -1239,11 +1254,11 @@ function renderFiche() {
       [sale, sucre].filter(Boolean).forEach(id => { compte[id] = (compte[id] || 0) + 1; });
       return { slot, sale: state.recipes.find(r => r.id === sale), sucre: state.recipes.find(r => r.id === sucre) };
     }).filter(x => x.sale || x.sucre);
-    return { d, repas };
+    return { d, repas, note: (menu.notes || {})[key] };
   });
 
-  const ficheJours = plan.map(({ d, repas }) => `
-    <div class="fiche-jour"><h3>${libelleJour(d)}</h3>
+  const ficheJours = plan.map(({ d, repas, note }) => `
+    <div class="fiche-jour"><h3>${libelleJour(d)}</h3>${note ? `<div class="hint" style="font-style:italic;margin-bottom:6px">${esc(note)}</div>` : ''}
       ${repas.length ? repas.map(x => `<div class="fiche-repas"><span class="menu-slot">${NOMS_CRENEAU[x.slot]}</span>
         <div>${x.sale ? esc(x.sale.titre) : '<span class="hint">Pas de plat salé</span>'}</div>
         ${x.sucre ? `<div class="hint">Dessert : ${esc(x.sucre.titre)}</div>` : ''}</div>`).join('')
@@ -1271,7 +1286,7 @@ function renderFiche() {
   $('menuFiche').innerHTML = `
     <div class="menu-entete">
       <h2>Menu de la semaine</h2>
-      <div class="hint">${menu.mode === 'vacances' ? 'Vacances : midi et soir' : 'Travail : soir seulement'} · ${menu.personnes} personne${menu.personnes > 1 ? 's' : ''}</div>
+      <div class="hint">${menu.vue === 'prochaine' ? 'Semaine prochaine' : 'Cette semaine'} · ${menu.mode === 'vacances' ? 'Vacances : midi et soir' : 'Travail : soir seulement'} ·${menu.personnes} personne${menu.personnes > 1 ? 's' : ''}</div>
     </div>
     ${ficheJours}
     <h2 class="menu-titre-liste">🛒 Liste de courses</h2>
@@ -1293,11 +1308,17 @@ $('mMode').addEventListener('click', e => {
   const b = e.target.closest('.chip'); if (!b) return;
   menu.mode = b.dataset.v; saveMenu(); renderMenuConfig();
 });
+$('mVue').addEventListener('click', e => {
+  const b = e.target.closest('.chip'); if (!b) return;
+  menu.vue = b.dataset.v; saveMenu(); renderMenuConfig();
+});
 $('mPers').addEventListener('change', e => {
   menu.personnes = Math.max(1, Number(e.target.value) || 1);
   e.target.value = menu.personnes; saveMenu();
 });
 $('mJours').addEventListener('change', e => {
+  const t = e.target.closest('textarea[data-note]');
+  if (t) { menu.notes = menu.notes || {}; menu.notes[t.dataset.note] = t.value.trim(); saveMenu(); return; }
   const s = e.target.closest('select[data-kind]'); if (!s) return;
   setRepas(s.dataset.jour, s.dataset.slot, s.dataset.kind, s.value);
 });
