@@ -172,6 +172,22 @@ textarea.f{min-height:88px;resize:vertical}
 .liste-actions button{border:1px solid var(--line);background:var(--chip);border-radius:10px;padding:9px 14px;cursor:pointer;font-weight:600}
 .liste-actions button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
 .vide{color:var(--muted);text-align:center;padding:24px 0}
+#menuFiche[hidden],#menuConfig[hidden]{display:none}
+.menu-jour{border-top:1px solid var(--line);padding-top:10px;margin-top:10px}
+.menu-jour h3,.fiche-jour h3{font-size:1rem;margin:0 0 6px}
+.menu-repas{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}
+.menu-slot{grid-column:1/-1;font-size:.78rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+.fiche-jour{border-top:1px solid var(--line);padding:10px 0}
+.fiche-repas{margin-bottom:6px}
+.menu-entete h2{margin:0 0 2px}
+.menu-titre-liste{margin-top:18px}
+.liste-actions.noprint{margin-top:14px}
+@media print{
+  body *{visibility:hidden}
+  #menuFiche,#menuFiche *{visibility:visible}
+  #menuFiche{position:absolute;left:0;top:0;width:100%}
+  .noprint{display:none !important}
+}
 
 /* Chargement */
 .skeleton{background:linear-gradient(90deg,var(--card),var(--chip),var(--card));background-size:200% 100%;animation:sh 1.2s infinite;border-radius:18px;height:200px;border:1px solid var(--line)}
@@ -200,6 +216,7 @@ textarea.f{min-height:88px;resize:vertical}
   <div class="hasard">
     <button class="btn-hasard" id="trouver" type="button">🧭 Trouve-moi une recette</button>
     <button class="btn-hasard" id="hasard" type="button">🎲 Un plat salé au hasard</button>
+    <button class="btn-hasard" id="menuBtn" type="button">📅 Menu de la semaine</button>
   </div>
 
   <div class="search">
@@ -288,6 +305,28 @@ textarea.f{min-height:88px;resize:vertical}
       <button class="x" type="button" data-close aria-label="Fermer">✕</button>
     </div>
     <div id="lBody"></div>
+  </div>
+</dialog>
+
+<!-- Menu de la semaine -->
+<dialog id="menuDlg" aria-labelledby="mTitle">
+  <div class="dlg">
+    <div class="dlg-head">
+      <h2 id="mTitle">📅 Menu de la semaine</h2>
+      <button class="x" type="button" data-close aria-label="Fermer">✕</button>
+    </div>
+    <div id="menuConfig">
+      <div class="hint">Tu es en…</div>
+      <div class="group" id="mMode" style="margin:8px 0 12px">
+        <button class="chip" type="button" data-v="travail" aria-pressed="false">Travail (repas du soir)</button>
+        <button class="chip" type="button" data-v="vacances" aria-pressed="false">Vacances (midi et soir)</button>
+      </div>
+      <label class="l" for="mPers">Nombre de personnes</label>
+      <input class="f" id="mPers" type="number" min="1" value="2" style="max-width:120px;margin-bottom:12px">
+      <div id="mJours"></div>
+      <button class="submit" type="button" id="mFiche">Voir la fiche de la semaine</button>
+    </div>
+    <div id="menuFiche" hidden></div>
   </div>
 </dialog>
 
@@ -801,9 +840,81 @@ const QUESTIONS = [
 let quiz = { rep: {}, pos: 0, liste: [], choix: null, relax: false };
 
 const texteRecette = r => [r.titre, r.notes, ...(r.ingredients || [])].join(' ');
-const estPiquant = r => /piment|piquant|gochujang|curry|harissa|sriracha|toubanjan|la-yu|tabasco|chili/i.test(texteRecette(r));
-const estChoco = r => /chocolat|cacao/i.test(texteRecette(r));
-const estLeger = r => (r.temps && r.temps <= 30) || /salade|légume|soupe|tofu|concombre|bouillon|poisson|taboul/i.test(texteRecette(r));
+// Étiquettes du quiz, par titre de recette : p = piquant, c = chocolat, l = léger
+// Si une recette n'est pas listée (ou a été renommée), on repasse sur les mots-clés automatiques.
+const TAGS = {
+  'Atsuage (tofu frit)': {p:0,c:0,l:1},
+  'Banana bread facile aux pépites de chocolat': {p:0,c:1,l:0},
+  'Boeuf saté': {p:1,c:0,l:0},
+  'Boeuf sauté aux oignons': {p:0,c:0,l:0},
+  'Brioche (en natte)': {p:0,c:0,l:0},
+  'Bubble tea au matcha (préparation de base)': {p:0,c:0,l:0},
+  'Bun bao (sandwich vietnamien au porc)': {p:0,c:0,l:1},
+  'Crème anglaise': {p:0,c:0,l:0},
+  'Crème bûche noisette': {p:0,c:0,l:0},
+  'Crème citron': {p:0,c:0,l:0},
+  'Crevettes tikka masala': {p:1,c:0,l:0},
+  'Curry de brocoli, pois chiches et champignons au lait de coco': {p:1,c:0,l:1},
+  'Curry vert thaï': {p:1,c:0,l:0},
+  'Flan maison au chocolat': {p:0,c:1,l:0},
+  'Forêt-noire au cacao (version 2)': {p:0,c:1,l:0},
+  'Galette des rois à la frangipane': {p:0,c:0,l:0},
+  'Galettes de kimchi': {p:1,c:0,l:0},
+  'Gâteau au chocolat (base forêt-noire)': {p:0,c:1,l:0},
+  'Gâteau au pandan': {p:0,c:0,l:0},
+  'Gâteau aux ananas de grand-mère': {p:0,c:0,l:0},
+  'Gaufres salées (base)': {p:0,c:0,l:0},
+  'Gaufres sucrées (base)': {p:0,c:0,l:0},
+  'Geotjeori (kimchi frais au chou nappa)': {p:1,c:0,l:1},
+  'Gyudon (bol de bœuf et oignons)': {p:0,c:0,l:0},
+  'Hachi pailloz': {p:0,c:0,l:0},
+  'Hiyashi chuka (nouilles froides), sauce': {p:0,c:0,l:1},
+  'Kouglof simple': {p:0,c:0,l:0},
+  'Lasagnes classiques (bolognaise et béchamel)': {p:0,c:0,l:0},
+  'Lentilles aux saucisses': {p:0,c:0,l:0},
+  "Mafé (ragoût à la pâte d'arachide)": {p:1,c:0,l:0},
+  'Melon pan (pâtes brioche et sablée)': {p:0,c:0,l:0},
+  'Mitarashi dango (brochettes de mochi sauce soja-sucre)': {p:0,c:0,l:1},
+  'Negimiso (sauce miso au poireau)': {p:0,c:0,l:1},
+  'Nouilles biang biang': {p:0,c:0,l:0},
+  'Okonomiyaki (crêpe japonaise salée)': {p:0,c:0,l:0},
+  'Osso buco': {p:0,c:0,l:0},
+  'Pain au lard': {p:0,c:0,l:0},
+  'Pain mochi au chocolat, façon konbini (8 pièces)': {p:0,c:1,l:0},
+  'Pancakes (8 pièces)': {p:0,c:0,l:0},
+  'Patates au four': {p:0,c:0,l:1},
+  'Pâte à pizza (environ 760 g)': {p:0,c:0,l:0},
+  'Pâte de curry massaman (nam phrik kaeng mat-sa-man)': {p:1,c:0,l:0},
+  'Pâte feuilletée (maison)': {p:0,c:0,l:0},
+  'Petits pains au sésame (6 pièces)': {p:0,c:0,l:0},
+  'Pickles de courgette': {p:0,c:0,l:1},
+  'Poulet aux noix de cajou': {p:1,c:0,l:0},
+  'Ramen miso épicé (2 portions)': {p:1,c:0,l:0},
+  'Riz frit basique': {p:0,c:0,l:0},
+  'Sauce chimichurri': {p:1,c:0,l:1},
+  'Sauce pour japchae': {p:0,c:0,l:1},
+  'Sauce tartare à la japonaise (タルタルソース)': {p:0,c:0,l:0},
+  'Sauce vin rouge, échalote et moutarde': {p:0,c:0,l:0},
+  'Soupe pékinoise (aigre-piquante)': {p:1,c:0,l:1},
+  'Soupe thaï simple au poulet et lait de coco (tom kha)': {p:1,c:0,l:1},
+  'Taboulé': {p:0,c:0,l:1},
+  'Takoyaki (boulettes de poulpe)': {p:0,c:0,l:0},
+  'Tarte salée aux légumes': {p:0,c:0,l:0},
+  'Terrine de foie de porc': {p:0,c:0,l:0},
+  'Thé au yuzu et miel, façon coréenne': {p:0,c:0,l:1},
+  'Tiramisu': {p:0,c:1,l:0},
+  'Tofu façon poulet (fumé et épicé)': {p:0,c:0,l:1},
+  'Tsukemen à la sauce soja (醤油つけ麺)': {p:0,c:0,l:0},
+  'Tteok (pâte de riz)': {p:0,c:0,l:1},
+  'Tteokkochi (brochettes de tteok, sauce gochujang)': {p:1,c:0,l:0},
+  'Viande de blé (seitan maison)': {p:0,c:0,l:0},
+  'Vinaigrette au sésame': {p:0,c:0,l:1},
+  'Zunda Mochi fait maison aux edamames': {p:0,c:0,l:0}
+};
+const etiquette = (r, k) => { const t = TAGS[r.titre]; return t ? !!t[k] : null; };
+const estPiquant = r => etiquette(r, 'p') ?? /piment|piquant|gochujang|curry|harissa|sriracha|toubanjan|la-yu|tabasco|chili/i.test(texteRecette(r));
+const estChoco = r => etiquette(r, 'c') ?? /chocolat|cacao/i.test(texteRecette(r));
+const estLeger = r => etiquette(r, 'l') ?? ((r.temps && r.temps <= 30) || /salade|légume|soupe|tofu|concombre|bouillon|poisson|taboul/i.test(texteRecette(r)));
 
 function correspond(r, rep) {
   if (rep.type && rep.type !== 'tous' && r.type !== rep.type) return false;
@@ -974,6 +1085,170 @@ $('form').addEventListener('submit', async e => {
     $('formMsg').textContent = 'Erreur : ' + err.message;
   } finally {
     btn.disabled = false;
+  }
+});
+
+// ---- Menu de la semaine ----
+const JOURS_FR = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
+const MOIS_FR = ['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
+const NOMS_CRENEAU = { midi: 'Midi', soir: 'Soir' };
+// menu = { mode: 'travail'|'vacances', personnes: n, repas: { 'AAAA-MM-JJ': { midi: {sale, sucre}, soir: {sale, sucre} } } }
+let menu = lsGet('menu-semaine', {});
+if (!menu.repas) menu.repas = {};
+if (!menu.personnes) menu.personnes = 2;
+function saveMenu() { lsSet('menu-semaine', menu); }
+
+function cleJour(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+// Aujourd'hui jusqu'à dimanche inclus
+function joursRestants() {
+  const debut = new Date(); debut.setHours(12, 0, 0, 0);
+  const fin = (7 - debut.getDay()) % 7;
+  return Array.from({ length: fin + 1 }, (_, i) => { const d = new Date(debut); d.setDate(debut.getDate() + i); return d; });
+}
+function libelleJour(d) {
+  const s = `${JOURS_FR[d.getDay()]} ${d.getDate()} ${MOIS_FR[d.getMonth()]}`;
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+function creneaux() { return menu.mode === 'vacances' ? ['midi', 'soir'] : ['soir']; }
+function repasDu(key, slot) {
+  const r = (menu.repas[key] || {})[slot] || {};
+  return { sale: r.sale || '', sucre: r.sucre || '' };
+}
+function setRepas(key, slot, kind, id) {
+  menu.repas[key] = menu.repas[key] || {};
+  menu.repas[key][slot] = { ...repasDu(key, slot), [kind]: id };
+  saveMenu();
+}
+function montrerMenu(vue) {
+  $('menuConfig').hidden = vue !== 'config';
+  $('menuFiche').hidden = vue !== 'fiche';
+}
+
+function renderMenuConfig() {
+  $('mMode').querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', String(c.dataset.v === menu.mode)));
+  $('mPers').value = menu.personnes;
+  // on ne garde que les jours de la semaine en cours
+  const cles = new Set(joursRestants().map(cleJour));
+  Object.keys(menu.repas).forEach(k => { if (!cles.has(k)) delete menu.repas[k]; });
+  saveMenu();
+  if (!menu.mode) {
+    $('mJours').innerHTML = '<div class="vide">Choisis travail ou vacances pour commencer.</div>';
+    return;
+  }
+  const tri = liste => liste.slice().sort((a, b) => String(a.titre).localeCompare(String(b.titre), 'fr'));
+  const sales = tri(state.recipes.filter(r => r.type === 'sale'));
+  const sucres = tri(state.recipes.filter(r => r.type === 'sucre'));
+  const options = (liste, vide, cur) => `<option value="">${vide}</option>` +
+    liste.map(r => `<option value="${esc(r.id)}" ${r.id === cur ? 'selected' : ''}>${esc(r.titre)}</option>`).join('');
+  $('mJours').innerHTML = joursRestants().map(d => {
+    const key = cleJour(d);
+    const lignes = creneaux().map(slot => {
+      const { sale, sucre } = repasDu(key, slot);
+      return `<div class="menu-repas">
+        <span class="menu-slot">${NOMS_CRENEAU[slot]}</span>
+        <select class="f" data-jour="${key}" data-slot="${slot}" data-kind="sale" aria-label="Plat salé, ${NOMS_CRENEAU[slot]}">${options(sales, '— plat salé —', sale)}</select>
+        <select class="f" data-jour="${key}" data-slot="${slot}" data-kind="sucre" aria-label="Dessert, ${NOMS_CRENEAU[slot]}">${options(sucres, '— pas de dessert —', sucre)}</select>
+      </div>`;
+    }).join('');
+    return `<div class="menu-jour"><h3>${libelleJour(d)}</h3>${lignes}</div>`;
+  }).join('');
+}
+
+function renderFiche() {
+  const compte = {};  // id -> nombre de repas où la recette apparaît
+  const plan = joursRestants().map(d => {
+    const key = cleJour(d);
+    const repas = creneaux().map(slot => {
+      const { sale, sucre } = repasDu(key, slot);
+      [sale, sucre].filter(Boolean).forEach(id => { compte[id] = (compte[id] || 0) + 1; });
+      return { slot, sale: state.recipes.find(r => r.id === sale), sucre: state.recipes.find(r => r.id === sucre) };
+    }).filter(x => x.sale || x.sucre);
+    return { d, repas };
+  });
+
+  const ficheJours = plan.map(({ d, repas }) => `
+    <div class="fiche-jour"><h3>${libelleJour(d)}</h3>
+      ${repas.length ? repas.map(x => `<div class="fiche-repas"><span class="menu-slot">${NOMS_CRENEAU[x.slot]}</span>
+        <div>${x.sale ? esc(x.sale.titre) : '<span class="hint">Pas de plat salé</span>'}</div>
+        ${x.sucre ? `<div class="hint">Dessert : ${esc(x.sucre.titre)}</div>` : ''}</div>`).join('')
+        : '<div class="hint">Rien de prévu</div>'}
+    </div>`).join('');
+
+  const blocs = Object.keys(compte).map(id => state.recipes.find(r => r.id === id)).filter(Boolean).map(r => {
+    const base = Number(r.portions) || 0;
+    const n = compte[r.id];
+    const ratio = base ? (menu.personnes / base) * n : n;
+    const items = (r.ingredients || []).map((i, idx) => {
+      const k = `menu|${r.id}|${idx}`;
+      const ok = !!coches[k];
+      return `<li><label>
+        <input type="checkbox" data-k="${esc(k)}" ${ok ? 'checked' : ''}>
+        <span class="${ok ? 'done' : ''}">${esc(mettreALEchelle(i, ratio))}</span>
+      </label></li>`;
+    }).join('');
+    return `<div class="liste-recette">
+      <h3><span>${esc(r.titre)}${n > 1 ? ` (×${n} repas)` : ''}</span></h3>
+      ${items ? `<ul class="ing">${items}</ul>` : '<div class="hint">Pas d’ingrédients renseignés.</div>'}
+    </div>`;
+  }).join('');
+
+  $('menuFiche').innerHTML = `
+    <div class="menu-entete">
+      <h2>Menu de la semaine</h2>
+      <div class="hint">${menu.mode === 'vacances' ? 'Vacances : midi et soir' : 'Travail : soir seulement'} · ${menu.personnes} personne${menu.personnes > 1 ? 's' : ''}</div>
+    </div>
+    ${ficheJours}
+    <h2 class="menu-titre-liste">🛒 Liste de courses</h2>
+    ${blocs || '<div class="vide">Aucun repas choisi.</div>'}
+    <div class="liste-actions noprint">
+      <button type="button" id="mRetour">← Modifier le menu</button>
+      <button class="primary" type="button" id="mCopier">Copier la liste</button>
+      <button type="button" id="mImprimer">Imprimer</button>
+    </div>
+    <div class="hint noprint" id="mCopieMsg" style="margin-top:8px"></div>`;
+}
+
+$('menuBtn').addEventListener('click', () => {
+  renderMenuConfig();
+  montrerMenu('config');
+  $('menuDlg').showModal();
+});
+$('mMode').addEventListener('click', e => {
+  const b = e.target.closest('.chip'); if (!b) return;
+  menu.mode = b.dataset.v; saveMenu(); renderMenuConfig();
+});
+$('mPers').addEventListener('change', e => {
+  menu.personnes = Math.max(1, Number(e.target.value) || 1);
+  e.target.value = menu.personnes; saveMenu();
+});
+$('mJours').addEventListener('change', e => {
+  const s = e.target.closest('select[data-kind]'); if (!s) return;
+  setRepas(s.dataset.jour, s.dataset.slot, s.dataset.kind, s.value);
+});
+$('mFiche').addEventListener('click', () => {
+  if (!menu.mode) { alert('Choisis d’abord travail ou vacances.'); return; }
+  renderFiche();
+  montrerMenu('fiche');
+  document.querySelector('#menuDlg .dlg').scrollTop = 0;
+});
+$('menuFiche').addEventListener('change', e => {
+  const cb = e.target.closest('input[type="checkbox"]'); if (!cb) return;
+  coches[cb.dataset.k] = cb.checked;
+  lsSet('liste-cochees', coches);
+  cb.parentElement.querySelector('span').classList.toggle('done', cb.checked);
+});
+$('menuFiche').addEventListener('click', async e => {
+  if (e.target.closest('#mRetour')) { renderMenuConfig(); montrerMenu('config'); return; }
+  if (e.target.closest('#mImprimer')) { window.print(); return; }
+  if (e.target.closest('#mCopier')) {
+    const texte = [...$('menuFiche').querySelectorAll('.liste-recette')].map(b =>
+      b.querySelector('h3').textContent.trim() + '\n' +
+      [...b.querySelectorAll('li span')].map(s => '- ' + s.textContent.trim()).join('\n')
+    ).join('\n\n');
+    try { await navigator.clipboard.writeText(texte); $('mCopieMsg').textContent = 'Liste copiée ✓'; }
+    catch { $('mCopieMsg').textContent = 'Copie impossible sur ce navigateur.'; }
   }
 });
 
