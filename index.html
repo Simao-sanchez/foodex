@@ -186,6 +186,16 @@ textarea.f{min-height:88px;resize:vertical}
 .src{color:var(--muted);font-style:normal;font-size:.8rem}
 .frigo-item{display:flex;flex-direction:column;gap:2px;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px;cursor:pointer;color:var(--fg);font:inherit}
 
+/* Barre de navigation du bas */
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;justify-content:space-around;background:var(--card);border-top:1px solid var(--line);box-shadow:0 -4px 16px rgba(0,0,0,.06);padding:6px 4px calc(6px + env(safe-area-inset-bottom))}
+.nav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;background:none;border:none;color:var(--fg);font-size:1.2rem;cursor:pointer;min-height:48px;padding:4px 0}
+.nav button span{font-size:.7rem;color:var(--muted)}
+.nav .n{display:inline-block;min-width:18px;padding:0 5px;border-radius:999px;background:var(--accent);color:#fff;font-size:.7rem;font-weight:700}
+#saisonOnly[aria-pressed="true"]{background:#5b8c3a;border-color:#5b8c3a;color:#fff}
+.badge.saison{background:#dcebc8;color:#3d6b22}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .badge.saison{background:#2f4a22;color:#cfe8b3}}
+:root[data-theme="dark"] .badge.saison{background:#2f4a22;color:#cfe8b3}
+
 /* Ergonomie tactile : zones de toucher plus grandes, texte lisible, grille compacte */
 .chip,.btn-hasard,.btn-liste,.btn-add,.liste-actions button,.q-act button,.c-nav button{min-height:40px}
 .x{min-width:40px;min-height:40px;width:40px;height:40px}
@@ -280,7 +290,7 @@ textarea.f{min-height:88px;resize:vertical}
       <button class="chip sale" type="button" data-v="sale" aria-pressed="false">Salé</button>
     </div>
     <div class="group" id="fViande">
-      <button class="chip" type="button" data-v="tous" aria-pressed="true">Toutes viandes</button>
+      <button class="chip" type="button" data-v="tous" aria-pressed="true">Tout</button>
       <button class="chip" type="button" data-v="viande" aria-pressed="false">Viande</button>
       <button class="chip" type="button" data-v="poisson" aria-pressed="false">Poisson</button>
       <button class="chip" type="button" data-v="vegetarien" aria-pressed="false">Végétarien</button>
@@ -288,6 +298,7 @@ textarea.f{min-height:88px;resize:vertical}
     </div>
     <div class="group">
       <button class="chip" id="souhaitsOnly" type="button" aria-pressed="false">★ Souhaits</button>
+      <button class="chip" id="saisonOnly" type="button" aria-pressed="false">🌿 De saison d'abord</button>
     </div>
   </div>
 
@@ -308,6 +319,15 @@ textarea.f{min-height:88px;resize:vertical}
     <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
   </div>
 </div>
+
+<!-- Barre de navigation du bas (téléphone) -->
+<nav class="nav" aria-label="Navigation">
+  <button type="button" id="navAccueil">🏠<span>Recettes</span></button>
+  <button type="button" id="navMenu">📅<span>Menu</span></button>
+  <button type="button" id="navFrigo">🧊<span>Frigo</span></button>
+  <button type="button" id="navInvites">🥂<span>Invités</span></button>
+  <button type="button" id="navListe">🛒<span>Liste <b class="n" id="nListeNav">0</b></span></button>
+</nav>
 
 <!-- Détail d'une recette -->
 <dialog id="detail" aria-labelledby="dTitle">
@@ -486,7 +506,7 @@ let selection = lsGet('liste-selection', []);       // ids des recettes choisies
 let coches = lsGet('liste-cochees', {});            // { "id|index": true }
 
 function saveSelection() { lsSet('liste-selection', selection); updateListeCount(); }
-function updateListeCount() { $('nListe').textContent = selection.length; }
+function updateListeCount() { $('nListe').textContent = selection.length; $('nListeNav').textContent = selection.length; }
 
 async function api(path, opts = {}) {
   const res = await fetch(`${CFG.url}/rest/v1/${path}`, {
@@ -541,6 +561,8 @@ function filtered() {
   });
   if (state.sort === 'recent') list.sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
   else list.sort((a, b) => String(a.titre).localeCompare(String(b.titre), 'fr'));
+  // « De saison d'abord » : les recettes avec des produits de saison passent en tête
+  if (state.saison) list = [...list.filter(estDeSaison), ...list.filter(r => !estDeSaison(r))];
   return list;
 }
 
@@ -571,7 +593,8 @@ function render() {
       r.type && `<span class="badge ${esc(r.type)}">${LABEL_TYPE[r.type] || ''}</span>`,
       r.viande && `<span class="badge">${LABEL_VIANDE[r.viande] || ''}</span>`,
       r.cuisine && `<span class="badge">${esc(r.cuisine)}</span>`,
-      r.difficulte && `<span class="badge">${esc(r.difficulte)}</span>`
+      r.difficulte && `<span class="badge">${esc(r.difficulte)}</span>`,
+      estDeSaison(r) && `<span class="badge saison">🌿 de saison</span>`
     ].filter(Boolean).join('');
     const preview = (r.ingredients || []).slice(0, 4).join(' · ');
     return `<article class="card" tabindex="0" data-id="${esc(r.id)}" role="button" aria-label="Ouvrir ${esc(r.titre)}">
@@ -1546,6 +1569,55 @@ $('iResultat').addEventListener('click', e => {
   if (!confirm('Effacer la soirée en cours ?')) return;
   soiree = null; lsSet('soiree', null);
   $('iResultat').innerHTML = '';
+});
+
+// ---- Produits de saison (France) ----
+const SAISONS = {
+  hiver: ['poireau','chou','carotte','navet','panais','betterave','celeri','endive','mache','potiron','courge','poire','pomme','clementine','mandarine','orange','citron','chataigne','topinambour','epinard','oignon','ail','pomme de terre','kaki'],
+  printemps: ['asperge','radis','petit pois','artichaut','fraise','epinard','laitue','carotte','navet','ciboule','rhubarbe','feve','oignon','ail','poireau'],
+  ete: ['tomate','courgette','concombre','aubergine','poivron','haricot vert','melon','peche','abricot','cerise','framboise','fraise','basilic','menthe','mais','figue','pasteque','nectarine'],
+  automne: ['courge','potiron','champignon','chataigne','raisin','figue','noix','poire','pomme','coing','chou','brocoli','poireau','mache','endive','navet','carotte','betterave','celeri','panais','topinambour','pomme de terre','ail','oignon']
+};
+function saisonCourante() {
+  const m = new Date().getMonth();
+  return (m === 11 || m <= 1) ? 'hiver' : m <= 4 ? 'printemps' : m <= 7 ? 'ete' : 'automne';
+}
+function estDeSaison(r) {
+  const mots = SAISONS[saisonCourante()];
+  return (r.ingredients || []).some(i => {
+    const n = sansAccents(i);
+    return mots.some(m => new RegExp('\\b' + m).test(n));
+  });
+}
+$('saisonOnly').addEventListener('click', e => {
+  state.saison = !state.saison;
+  e.currentTarget.setAttribute('aria-pressed', String(state.saison));
+  render();
+});
+
+// ---- Barre de navigation du bas ----
+$('navAccueil').addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+$('navMenu').addEventListener('click', () => $('menuBtn').click());
+$('navFrigo').addEventListener('click', () => $('frigoBtn').click());
+$('navInvites').addEventListener('click', () => $('inviteBtn').click());
+$('navListe').addEventListener('click', openListe);
+
+// ---- Bouton retour d'Android : ferme d'abord la fenêtre ouverte, sans quitter l'appli ----
+const showModalOriginal = HTMLDialogElement.prototype.showModal;
+HTMLDialogElement.prototype.showModal = function () {
+  showModalOriginal.call(this);
+  history.pushState({ dlg: this.id }, '');
+};
+let retoursInternes = 0;   // retours provoqués par la fermeture d'une fenêtre (à ignorer)
+document.querySelectorAll('dialog').forEach(d => {
+  d.addEventListener('close', () => {
+    if (history.state && history.state.dlg === d.id) { retoursInternes++; history.back(); }
+  });
+});
+window.addEventListener('popstate', () => {
+  if (retoursInternes > 0) { retoursInternes--; return; }
+  const ouverte = [...document.querySelectorAll('dialog[open]')].pop();
+  if (ouverte) ouverte.close();
 });
 
 // ---- Mode frigo : recettes à partir des ingrédients qu'on a déjà ----
