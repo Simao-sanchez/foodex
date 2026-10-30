@@ -186,6 +186,10 @@ textarea.f{min-height:88px;resize:vertical}
 .src{color:var(--muted);font-style:normal;font-size:.8rem}
 .frigo-item{display:flex;flex-direction:column;gap:2px;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px;cursor:pointer;color:var(--fg);font:inherit}
 
+/* Sauvegarde discrète */
+.sauv{text-align:center;margin:28px 0 0;padding-bottom:70px}
+.sauv button{background:none;border:none;color:var(--muted);text-decoration:underline;cursor:pointer;font-size:.85rem;min-height:40px}
+
 /* Barre de navigation du bas */
 .nav{position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;justify-content:space-around;background:var(--card);border-top:1px solid var(--line);box-shadow:0 -4px 16px rgba(0,0,0,.06);padding:6px 4px calc(6px + env(safe-area-inset-bottom))}
 .nav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;background:none;border:none;color:var(--fg);font-size:1.2rem;cursor:pointer;min-height:48px;padding:4px 0}
@@ -265,7 +269,6 @@ textarea.f{min-height:88px;resize:vertical}
       <div class="sub">Ce qu'on cuisine, ce qu'on aime, ce qu'on veut refaire</div>
     </div>
     <div class="head-btns">
-      <button class="btn-liste" id="sauvegarder" type="button" title="Télécharger une copie de toutes les recettes">💾 Sauvegarde</button>
       <button class="btn-liste" id="openListe" type="button">🛒 Liste de courses <span class="n" id="nListe">0</span></button>
       <button class="btn-add" id="openAdd" type="button">+ <span class="fab-text">Ajouter</span></button>
     </div>
@@ -318,6 +321,11 @@ textarea.f{min-height:88px;resize:vertical}
   <div id="grid">
     <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
   </div>
+</div>
+
+<!-- Sauvegarde : discrète, en bas de page -->
+<div class="sauv">
+  <button type="button" id="sauvegarder" title="Télécharger une copie de toutes les recettes">💾 Télécharger une sauvegarde des recettes</button>
 </div>
 
 <!-- Barre de navigation du bas (téléphone) -->
