@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Nos recettes</title>
+<style>
+:root{--bg:#faf7f2;--fg:#2b2622;--muted:#7a6f66;--accent:#b5532c;--card:#ffffff;--line:#e8e1d7;--chip:#f1ebe2}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#1c1a18;--fg:#f1ece6;--muted:#a39a90;--accent:#e08a5f;--card:#26221f;--line:#3a342f;--chip:#332e29}}
+:root[data-theme="dark"]{--bg:#1c1a18;--fg:#f1ece6;--muted:#a39a90;--accent:#e08a5f;--card:#26221f;--line:#3a342f;--chip:#332e29}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,sans-serif;line-height:1.45;padding:16px;padding-bottom:48px;max-width:720px;margin-inline:auto}
+h1{font-size:1.5rem;margin:0 0 4px}
+.sub{color:var(--muted);font-size:.9rem;margin-bottom:16px}
+.filters{display:grid;gap:8px;grid-template-columns:1fr 1fr;margin-bottom:12px}
+.filters input{grid-column:1/-1}
+input,select,textarea{font:inherit;color:var(--fg);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 10px;width:100%}
+textarea{min-height:90px;resize:vertical}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.chip{border:1px solid var(--line);background:var(--chip);color:var(--fg);border-radius:999px;padding:5px 11px;font-size:.85rem;cursor:pointer;font:inherit;font-size:.85rem}
+.chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:10px}
+.card h2{font-size:1.05rem;margin:0 0 6px}
+.tags{display:flex;gap:6px;flex-wrap:wrap;font-size:.78rem;color:var(--muted);margin-bottom:6px}
+.tags span{background:var(--chip);border-radius:6px;padding:2px 7px}
+details summary{cursor:pointer;color:var(--accent);font-size:.9rem;margin-top:6px}
+.body{margin-top:8px;font-size:.92rem}
+.body h3{font-size:.85rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin:12px 0 4px}
+.body ul,.body ol{margin:0;padding-left:20px}
+.body li{margin-bottom:3px}
+.body a{color:var(--accent);word-break:break-all}
+.meta{color:var(--muted);font-size:.8rem;margin-top:8px}
+.del{margin-top:10px;background:none;border:none;color:var(--muted);font:inherit;font-size:.8rem;cursor:pointer;padding:0;text-decoration:underline}
+.add{margin-top:20px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.add summary{font-weight:600;color:var(--fg)}
+.grid{display:grid;gap:8px;grid-template-columns:1fr 1fr;margin-top:10px}
+.grid .full{grid-column:1/-1}
+label{font-size:.8rem;color:var(--muted);display:block;margin-bottom:3px}
+button.primary{background:var(--accent);color:#fff;border:none;border-radius:10px;padding:10px 16px;font:inherit;font-weight:600;cursor:pointer;margin-top:10px;width:100%}
+button.primary:disabled{opacity:.5}
+.msg{font-size:.85rem;margin-top:8px;color:var(--muted)}
+.msg.err{color:#c0392b}
+.empty{color:var(--muted);text-align:center;padding:30px 0}
+</style>
+</head>
+<body>
+<h1>Nos recettes</h1>
+<div class="sub" id="count">Chargement…</div>
+
+<div class="filters">
+  <input id="q" type="search" placeholder="Rechercher un titre ou un ingrédient">
+  <select id="fViande">
+    <option value="tous">Toutes viandes</option>
+    <option value="viande">Viande</option>
+    <option value="poisson">Poisson</option>
+    <option value="vegetarien">Végétarien</option>
+    <option value="vegan">Végan</option>
+  </select>
+  <select id="fCuisine"><option value="tous">Toutes cuisines</option></select>
+</div>
+<div class="chips" id="fType">
+  <button class="chip on" data-v="tous">Tout</button>
+  <button class="chip" data-v="sucre">Sucré</button>
+  <button class="chip" data-v="sale">Salé</button>
+</div>
+
+<div id="list"></div>
+
+<details class="add" id="addBox">
+  <summary>+ Ajouter une recette</summary>
+  <form id="form">
+    <div class="grid">
+      <div class="full"><label>Titre *</label><input name="titre" required></div>
+      <div><label>Type</label>
+        <select name="type"><option value="sale">Salé</option><option value="sucre">Sucré</option></select></div>
+      <div><label>Viande</label>
+        <select name="viande"><option value="viande">Viande</option><option value="poisson">Poisson</option><option value="vegetarien">Végétarien</option><option value="vegan">Végan</option></select></div>
+      <div><label>Cuisine</label><input name="cuisine" placeholder="japonaise, italienne…"></div>
+      <div><label>Temps (min)</label><input name="temps" type="number" min="0"></div>
+      <div><label>Portions</label><input name="portions" type="number" min="1"></div>
+      <div><label>Difficulté</label>
+        <select name="difficulte"><option value="">—</option><option>facile</option><option>moyen</option><option>difficile</option></select></div>
+      <div><label>Ajouté par</label><input name="ajoute_par" placeholder="ton prénom"></div>
+      <div class="full"><label>Lien source</label><input name="source" type="url" placeholder="https://…"></div>
+      <div class="full"><label>Ingrédients (un par ligne)</label><textarea name="ingredients"></textarea></div>
+      <div class="full"><label>Étapes (une par ligne)</label><textarea name="etapes"></textarea></div>
+      <div class="full"><label>Notes</label><textarea name="notes" style="min-height:60px"></textarea></div>
+    </div>
+    <button class="primary" id="save" type="submit">Enregistrer la recette</button>
+    <div class="msg" id="formMsg"></div>
+  </form>
+</details>
+
+<script>
+// ---- Configuration Supabase (clé publique, prévue pour le navigateur) ----
+const CFG = {
+  url: 'https://ravmmggdctdidjuibmua.supabase.co',
+  key: 'sb_publishable_KdYYG447WNcOcUi6BN0GwA_NrdNgLgq'
+};
+const TABLE = 'recettes';
+
+const LABEL_VIANDE = {viande:'Viande', poisson:'Poisson', vegetarien:'Végétarien', vegan:'Végan'};
+const LABEL_TYPE = {sucre:'Sucré', sale:'Salé'};
+
+let recipes = [];
+let type = 'tous';
+
+const el = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const lines = v => String(v || '').split('\n').map(s => s.trim()).filter(Boolean);
+
+async function api(path, opts = {}) {
+  const res = await fetch(`${CFG.url}/rest/v1/${path}`, {
+    ...opts,
+    headers: { apikey: CFG.key, Authorization: `Bearer ${CFG.key}`, ...(opts.headers || {}) }
+  });
+  if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
+  const txt = await res.text();
+  return txt ? JSON.parse(txt) : null;
+}
+
+async function loadRecipes() {
+  try {
+    recipes = await api(`${TABLE}?select=*&order=titre.asc`);
+    render();
+  } catch (e) {
+    el('count').textContent = 'Erreur de chargement : ' + e.message;
+  }
+}
+
+function render() {
+  const q = el('q').value.trim().toLowerCase();
+  const viande = el('fViande').value;
+  const cuisine = el('fCuisine').value;
+
+  const cuisines = [...new Set(recipes.map(r => r.cuisine).filter(Boolean))].sort();
+  const cur = el('fCuisine').value;
+  el('fCuisine').innerHTML = '<option value="tous">Toutes cuisines</option>' +
+    cuisines.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+  el('fCuisine').value = cuisines.includes(cur) ? cur : 'tous';
+
+  const list = recipes.filter(r => {
+    if (type !== 'tous' && r.type !== type) return false;
+    if (viande !== 'tous' && r.viande !== viande) return false;
+    if (cuisine !== 'tous' && r.cuisine !== cuisine) return false;
+    if (q) {
+      const hay = [r.titre, ...(r.ingredients || [])].join(' ').toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  el('count').textContent = `${list.length} sur ${recipes.length} recette(s)`;
+
+  if (!recipes.length) {
+    el('list').innerHTML = '<div class="empty">Aucune recette pour l\'instant.</div>';
+    return;
+  }
+  if (!list.length) {
+    el('list').innerHTML = '<div class="empty">Aucune recette ne correspond.</div>';
+    return;
+  }
+
+  el('list').innerHTML = list.map(r => {
+    const tags = [
+      LABEL_TYPE[r.type],
+      LABEL_VIANDE[r.viande],
+      r.cuisine,
+      r.temps && `${r.temps} min`,
+      r.portions && `${r.portions} pers.`,
+      r.difficulte
+    ].filter(Boolean).map(t => `<span>${esc(t)}</span>`).join('');
+    const ing = (r.ingredients || []).map(i => `<li>${esc(i)}</li>`).join('');
+    const steps = (r.etapes || []).map(s => `<li>${esc(s)}</li>`).join('');
+    const notes = r.notes ? `<h3>Notes</h3><div>${esc(r.notes).replace(/\n/g, '<br>')}</div>` : '';
+    const src = r.source ? `<h3>Source</h3><a href="${esc(r.source)}" target="_blank" rel="noopener">${esc(r.source)}</a>` : '';
+    return `<article class="card">
+      <h2>${esc(r.titre)}</h2>
+      <div class="tags">${tags}</div>
+      <details><summary>Voir la recette</summary>
+        <div class="body">
+          ${ing ? `<h3>Ingrédients</h3><ul>${ing}</ul>` : ''}
+          ${steps ? `<h3>Étapes</h3><ol>${steps}</ol>` : ''}
+          ${notes}${src}
+        </div>
+      </details>
+      <div class="meta">${r.ajoute_par ? 'Ajouté par ' + esc(r.ajoute_par) : ''}</div>
+      <button class="del" data-id="${esc(r.id)}">Supprimer</button>
+    </article>`;
+  }).join('');
+}
+
+// ---- Filtres ----
+el('q').addEventListener('input', render);
+el('fViande').addEventListener('change', render);
+el('fCuisine').addEventListener('change', render);
+el('fType').addEventListener('click', e => {
+  const b = e.target.closest('.chip'); if (!b) return;
+  type = b.dataset.v;
+  document.querySelectorAll('#fType .chip').forEach(c => c.classList.toggle('on', c === b));
+  render();
+});
+
+// ---- Suppression ----
+el('list').addEventListener('click', async e => {
+  const b = e.target.closest('.del'); if (!b) return;
+  if (!confirm('Supprimer cette recette ?')) return;
+  try {
+    await api(`${TABLE}?id=eq.${encodeURIComponent(b.dataset.id)}`, { method: 'DELETE' });
+    await loadRecipes();
+  } catch (err) {
+    alert('Suppression impossible : ' + err.message);
+  }
+});
+
+// ---- Ajout ----
+el('form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const f = new FormData(e.target);
+  const data = {
+    titre: f.get('titre').trim(),
+    type: f.get('type'),
+    viande: f.get('viande'),
+    cuisine: f.get('cuisine').trim().toLowerCase() || null,
+    temps: Number(f.get('temps')) || null,
+    portions: Number(f.get('portions')) || null,
+    difficulte: f.get('difficulte') || null,
+    ajoute_par: f.get('ajoute_par').trim() || null,
+    source: f.get('source').trim() || null,
+    ingredients: lines(f.get('ingredients')),
+    etapes: lines(f.get('etapes')),
+    notes: f.get('notes').trim() || null
+  };
+  const btn = el('save');
+  btn.disabled = true;
+  el('formMsg').className = 'msg';
+  el('formMsg').textContent = 'Enregistrement…';
+  try {
+    await api(TABLE, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify(data)
+    });
+    e.target.reset();
+    el('formMsg').textContent = 'Recette ajoutée ✓';
+    el('addBox').open = false;
+    await loadRecipes();
+  } catch (err) {
+    el('formMsg').className = 'msg err';
+    el('formMsg').textContent = 'Erreur : ' + err.message;
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// ---- Rafraîchissement : à l'ouverture, au retour sur l'onglet, puis toutes les minutes ----
+document.addEventListener('visibilitychange', () => { if (!document.hidden) loadRecipes(); });
+setInterval(loadRecipes, 60000);
+loadRecipes();
+</script>
+</body>
+</html>
