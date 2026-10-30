@@ -184,6 +184,7 @@ textarea.f{min-height:88px;resize:vertical}
 .rayon{margin-bottom:12px}
 .rayon h4{font-size:.85rem;text-transform:uppercase;letter-spacing:.04em;color:var(--accent);margin:0 0 4px}
 .src{color:var(--muted);font-style:normal;font-size:.8rem}
+.frigo-item{display:flex;flex-direction:column;gap:2px;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px;cursor:pointer;color:var(--fg);font:inherit}
 #menuFiche[hidden],#menuConfig[hidden]{display:none}
 .menu-jour{border-top:1px solid var(--line);padding-top:10px;margin-top:10px}
 .menu-jour h3,.fiche-jour h3{font-size:1rem;margin:0 0 6px}
@@ -230,6 +231,7 @@ textarea.f{min-height:88px;resize:vertical}
     <button class="btn-hasard" id="trouver" type="button">🧭 Trouve-moi une recette</button>
     <button class="btn-hasard" id="hasard" type="button">🎲 Un plat salé au hasard</button>
     <button class="btn-hasard" id="menuBtn" type="button">📅 Menu de la semaine</button>
+    <button class="btn-hasard" id="frigoBtn" type="button">🧊 Mode frigo</button>
   </div>
 
   <div class="search">
@@ -321,6 +323,20 @@ textarea.f{min-height:88px;resize:vertical}
   </div>
 </dialog>
 
+<!-- Mode frigo -->
+<dialog id="frigoDlg" aria-labelledby="fTitle">
+  <div class="dlg">
+    <div class="dlg-head">
+      <h2 id="fTitle">🧊 Mode frigo</h2>
+      <button class="x" type="button" data-close aria-label="Fermer">✕</button>
+    </div>
+    <label class="l" for="fIng">Ce que tu as sous la main</label>
+    <textarea class="f" id="fIng" placeholder="Un ingrédient par ligne ou séparé par des virgules, ex. : œufs, riz, courgette" style="min-height:80px"></textarea>
+    <button class="submit" type="button" id="fChercher">Trouver des recettes</button>
+    <div id="fRes" style="margin-top:12px"></div>
+  </div>
+</dialog>
+
 <!-- Menu de la semaine -->
 <dialog id="menuDlg" aria-labelledby="mTitle">
   <div class="dlg">
@@ -340,6 +356,8 @@ textarea.f{min-height:88px;resize:vertical}
       </div>
       <label class="l" for="mPers">Nombre de personnes</label>
       <input class="f" id="mPers" type="number" min="1" value="2" style="max-width:120px;margin-bottom:12px">
+      <div class="hint" id="mBilan" style="margin:4px 0 8px"></div>
+      <button type="button" id="mProposer" style="margin-bottom:6px">✨ Proposer les repas vides</button>
       <div id="mJours"></div>
       <button class="submit" type="button" id="mFiche">Voir la fiche de la semaine</button>
     </div>
@@ -680,6 +698,7 @@ function renderListe() {
   $('lBody').innerHTML = blocs + zoneCumul + `
     <div class="liste-actions">
       <button class="primary" type="button" id="copier">Copier la liste</button>
+      <button type="button" id="partager">Partager la liste</button>
       <button type="button" id="cocherTout">Tout décocher</button>
       <button type="button" id="viderListe">Vider la liste</button>
     </div>
@@ -715,6 +734,18 @@ $('lBody').addEventListener('click', async e => {
   }
   if (e.target.id === 'cocherTout') {
     coches = {}; lsSet('liste-cochees', coches); renderListe();
+    return;
+  }
+  if (e.target.id === 'partager') {
+    const chosen = selection.map(id => state.recipes.find(r => r.id === id)).filter(Boolean);
+    const texte = chosen.map(r => `${r.titre}\n` + (r.ingredients || []).map(i => `- ${i}`).join('\n')).join('\n\n');
+    if (navigator.share) {
+      try { await navigator.share({ title: 'Liste de courses', text: texte }); }
+      catch (err) { /* partage annulé */ }
+    } else {
+      try { await navigator.clipboard.writeText(texte); $('copieMsg').textContent = 'Partage indisponible ici : liste copiée ✓'; }
+      catch { $('copieMsg').textContent = 'Partage impossible sur ce navigateur.'; }
+    }
     return;
   }
   if (e.target.id === 'copier') {
@@ -1222,6 +1253,7 @@ function renderMenuConfig() {
   $('mMode').querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', String(c.dataset.v === menu.mode)));
   $('mVue').querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', String(c.dataset.v === (menu.vue || 'cette'))));
   $('mPers').value = menu.personnes;
+  renderBilan();
   // on ne garde que les jours des deux semaines affichées
   const cles = new Set([...joursRestants('cette'), ...joursRestants('prochaine')].map(cleJour));
   Object.keys(menu.repas).forEach(k => { if (!cles.has(k)) delete menu.repas[k]; });
@@ -1306,6 +1338,95 @@ function renderFiche() {
     </div>
     <div class="hint noprint" id="mCopieMsg" style="margin-top:8px"></div>`;
 }
+
+// ---- Équilibre de la semaine ----
+const CATS = ['viande', 'poisson', 'vegetarien', 'vegan'];
+// Les plats salés prévus dans la semaine affichée
+function plansDeLaSemaine() {
+  const plats = [];
+  joursRestants().forEach(d => {
+    const key = cleJour(d);
+    creneaux().forEach(slot => {
+      const { sale } = repasDu(key, slot);
+      if (sale) plats.push({ key, slot, id: sale, r: state.recipes.find(x => x.id === sale) });
+    });
+  });
+  return plats;
+}
+function renderBilan() {
+  const plats = plansDeLaSemaine().filter(p => p.r);
+  const compte = { viande: 0, poisson: 0, vegetarien: 0, vegan: 0 };
+  plats.forEach(p => { if (p.r.viande in compte) compte[p.r.viande]++; });
+  const txt = CATS.filter(c => compte[c]).map(c => `${compte[c]} ${LABEL_VIANDE[c].toLowerCase()}`).join(' · ');
+  $('mBilan').textContent = plats.length
+    ? `Bilan de la semaine : ${txt} (${plats.length} plat${plats.length > 1 ? 's' : ''} salé${plats.length > 1 ? 's' : ''})`
+    : 'Bilan de la semaine : aucun plat salé prévu pour l’instant';
+}
+// Remplit les repas salés vides en privilégiant la catégorie (viande, poisson, végé, végan) la moins présente
+function proposerRepas() {
+  if (!menu.mode) { alert('Choisis d’abord travail ou vacances.'); return; }
+  const recettes = state.recipes.filter(r => r.type === 'sale' && r.viande in { viande: 1, poisson: 1, vegetarien: 1, vegan: 1 } && !estSauce(r));
+  if (!recettes.length) { alert('Pas assez de plats salés pour proposer.'); return; }
+  const deja = new Set(plansDeLaSemaine().map(p => p.id));
+  const compte = { viande: 0, poisson: 0, vegetarien: 0, vegan: 0 };
+  plansDeLaSemaine().forEach(p => { if (p.r && p.r.viande in compte) compte[p.r.viande]++; });
+  let ajoutes = 0;
+  joursRestants().forEach(d => {
+    const key = cleJour(d);
+    creneaux().forEach(slot => {
+      if (repasDu(key, slot).sale) return;
+      const dispo = CATS.map(c => [c, recettes.filter(r => r.viande === c && !deja.has(r.id))]).filter(([, l]) => l.length);
+      if (!dispo.length) return;
+      const min = Math.min(...dispo.map(([c]) => compte[c]));
+      const candidats = dispo.filter(([c]) => compte[c] === min);
+      const [c, liste] = candidats[Math.floor(Math.random() * candidats.length)];
+      const choisi = liste[Math.floor(Math.random() * liste.length)];
+      setRepas(key, slot, 'sale', choisi.id);
+      deja.add(choisi.id);
+      compte[c]++;
+      ajoutes++;
+    });
+  });
+  if (!ajoutes) alert('Tous les repas salés sont déjà remplis.');
+  renderMenuConfig();
+}
+$('mProposer').addEventListener('click', proposerRepas);
+
+// ---- Mode frigo : recettes à partir des ingrédients qu'on a déjà ----
+const sansAccents = s => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+function chercherFrigo() {
+  lsSet('frigo-ingredients', $('fIng').value);
+  const termes = sansAccents($('fIng').value).split(/[\n,;]+/).map(s => s.trim()).filter(s => s.length >= 2);
+  if (!termes.length) { $('fRes').innerHTML = '<div class="hint">Écris au moins un ingrédient.</div>'; return; }
+  const resultats = state.recipes.map(r => {
+    const ings = (r.ingredients || []).map(i => ({ texte: i, n: sansAccents(i) }));
+    if (!ings.length) return null;
+    const trouves = ings.filter(i => termes.some(t => i.n.includes(t)));
+    const manquent = ings.filter(i => !trouves.includes(i));
+    const utilises = termes.filter(t => ings.some(i => i.n.includes(t))).length;
+    return { r, utilises, trouves: trouves.length, total: ings.length, manquent };
+  }).filter(x => x && x.utilises > 0)
+    .sort((a, b) => b.utilises - a.utilises || (b.trouves / b.total) - (a.trouves / a.total));
+  $('fRes').innerHTML = resultats.length
+    ? resultats.slice(0, 20).map(({ r, trouves, total, manquent }) => `
+      <button type="button" class="frigo-item" data-id="${esc(r.id)}">
+        <strong>${esc(r.titre)}</strong>
+        <span class="hint">Tu as ${trouves} ingrédient${trouves > 1 ? 's' : ''} sur ${total}</span>
+        <span class="hint">${manquent.length
+          ? 'Il manque : ' + esc(manquent.slice(0, 4).map(m => m.texte).join(' · ')) + (manquent.length > 4 ? ' …' : '')
+          : 'Tu as tout !'}</span>
+      </button>`).join('')
+    : '<div class="vide">Aucune recette ne correspond à ces ingrédients.</div>';
+}
+$('frigoBtn').addEventListener('click', () => {
+  $('fIng').value = lsGet('frigo-ingredients', '');
+  $('fRes').innerHTML = '';
+  $('frigoDlg').showModal();
+});
+$('fChercher').addEventListener('click', chercherFrigo);
+$('fRes').addEventListener('click', e => {
+  const b = e.target.closest('.frigo-item'); if (b) openRecipe(b.dataset.id);
+});
 
 $('menuBtn').addEventListener('click', () => {
   renderMenuConfig();
