@@ -421,6 +421,7 @@ async function loadRecipes() {
     if (selection.length !== avant) saveSelection();
     updateCuisineOptions();
     render();
+    chargerMenu();
   } catch (e) {
     $('count').textContent = 'Erreur de chargement';
     $('grid').innerHTML = `<div class="empty"><strong>Impossible de charger les recettes</strong>${esc(e.message)}</div>`;
@@ -1141,7 +1142,35 @@ const NOMS_CRENEAU = { midi: 'Midi', soir: 'Soir' };
 let menu = lsGet('menu-semaine', {});
 if (!menu.repas) menu.repas = {};
 if (!menu.personnes) menu.personnes = 2;
-function saveMenu() { lsSet('menu-semaine', menu); }
+// Le menu est partagé via la table menu_semaine (une seule ligne, id = 'partage').
+let envoiMenu = null;
+function saveMenu() {
+  lsSet('menu-semaine', menu);
+  clearTimeout(envoiMenu);
+  envoiMenu = setTimeout(envoyerMenu, 400);
+}
+async function envoyerMenu() {
+  try {
+    await api('menu_semaine', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify({ id: 'partage', data: menu, updated_at: new Date().toISOString() })
+    });
+  } catch (err) { console.warn('Menu non partagé :', err.message); }
+}
+async function chargerMenu() {
+  try {
+    const rows = await api('menu_semaine?id=eq.partage&select=data');
+    const d = rows && rows[0] && rows[0].data;
+    if (!d || !Object.keys(d).length) return;
+    const avant = JSON.stringify(menu);
+    menu = d;
+    if (!menu.repas) menu.repas = {};
+    if (!menu.personnes) menu.personnes = 2;
+    lsSet('menu-semaine', menu);
+    if (JSON.stringify(menu) !== avant && $('menuDlg').open) renderMenuConfig();
+  } catch (err) { console.warn('Menu non chargé :', err.message); }
+}
 
 function cleJour(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
