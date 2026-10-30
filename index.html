@@ -185,6 +185,40 @@ textarea.f{min-height:88px;resize:vertical}
 .rayon h4{font-size:.85rem;text-transform:uppercase;letter-spacing:.04em;color:var(--accent);margin:0 0 4px}
 .src{color:var(--muted);font-style:normal;font-size:.8rem}
 .frigo-item{display:flex;flex-direction:column;gap:2px;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px;cursor:pointer;color:var(--fg);font:inherit}
+
+/* Ergonomie tactile : zones de toucher plus grandes, texte lisible, grille compacte */
+.chip,.btn-hasard,.btn-liste,.btn-add,.liste-actions button,.q-act button,.c-nav button{min-height:40px}
+.x{min-width:40px;min-height:40px;width:40px;height:40px}
+.pick,.etoile{min-height:34px}
+.hasard{flex-wrap:nowrap;overflow-x:auto;justify-content:flex-start;padding-bottom:4px;scrollbar-width:none;margin-left:-16px;margin-right:-16px;padding-left:16px;padding-right:16px}
+.hasard::-webkit-scrollbar{display:none}
+.hasard button{flex-shrink:0}
+@media (max-width:640px){
+  /* iOS zoome sur les champs de moins de 16px : on force 16px */
+  input,select,textarea{font-size:16px}
+  .wrap{padding:16px 12px 110px}
+  #grid{grid-template-columns:1fr 1fr;gap:10px}
+  .visu{height:96px;font-size:2.4rem}
+  .card-body{padding:10px 11px 12px;gap:6px}
+  .card h2{font-size:.95rem}
+  .preview{display:none}
+  .foot{font-size:.74rem}
+  .badges{gap:4px}
+  .badge{font-size:.7rem;padding:2px 7px}
+  .pick{top:6px;right:6px;padding:5px 9px;font-size:.76rem}
+  .etoile{top:6px;left:6px;padding:5px 9px;font-size:.8rem}
+  .row2{margin-bottom:12px}
+  .btn-add .fab-text{display:none}
+  .btn-add{padding:11px 14px}
+  .form-grid{grid-template-columns:1fr}
+  .menu-repas{grid-template-columns:1fr}
+  .facts{grid-template-columns:repeat(3,1fr)}
+  dialog{width:100vw;max-width:100vw;max-height:100dvh;height:auto;border-radius:20px 20px 0 0;margin:auto 0 0 0}
+  .dlg{max-height:100dvh;padding:18px 16px calc(18px + env(safe-area-inset-bottom))}
+  .dlg-photo{margin:-18px -16px 14px}
+  .c-wrap{padding:16px 16px calc(16px + env(safe-area-inset-bottom))}
+  .c-nav{position:sticky;bottom:0;background:var(--bg);padding-top:8px}
+}
 #menuFiche[hidden],#menuConfig[hidden]{display:none}
 .menu-jour{border-top:1px solid var(--line);padding-top:10px;margin-top:10px}
 .menu-jour h3,.fiche-jour h3{font-size:1rem;margin:0 0 6px}
@@ -232,6 +266,7 @@ textarea.f{min-height:88px;resize:vertical}
     <button class="btn-hasard" id="hasard" type="button">🎲 Un plat salé au hasard</button>
     <button class="btn-hasard" id="menuBtn" type="button">📅 Menu de la semaine</button>
     <button class="btn-hasard" id="frigoBtn" type="button">🧊 Mode frigo</button>
+    <button class="btn-hasard" id="inviteBtn" type="button">🥂 Mode invités</button>
   </div>
 
   <div class="search">
@@ -320,6 +355,28 @@ textarea.f{min-height:88px;resize:vertical}
       <button class="x" type="button" data-close aria-label="Fermer">✕</button>
     </div>
     <div id="lBody"></div>
+  </div>
+</dialog>
+
+<!-- Mode invités -->
+<dialog id="inviteDlg" aria-labelledby="iTitle">
+  <div class="dlg">
+    <div class="dlg-head">
+      <h2 id="iTitle">🥂 Mode invités</h2>
+      <button class="x" type="button" data-close aria-label="Fermer">✕</button>
+    </div>
+    <label class="l" for="iNom">Occasion</label>
+    <input class="f" id="iNom" placeholder="Dîner chez nous, anniversaire…" style="margin-bottom:8px">
+    <label class="l" for="iPers">Nombre de personnes (toi compris)</label>
+    <input class="f" id="iPers" type="number" min="1" value="4" style="max-width:120px;margin-bottom:8px">
+    <label class="l" for="iPlat">Plat principal</label>
+    <select class="f" id="iPlat" style="margin-bottom:8px"></select>
+    <label class="l" for="iDessert">Dessert</label>
+    <select class="f" id="iDessert" style="margin-bottom:8px"></select>
+    <label class="l" for="iHeure">Heure du repas (facultatif)</label>
+    <input class="f" id="iHeure" type="time" style="max-width:160px;margin-bottom:8px">
+    <button class="submit" type="button" id="iGenerer">Préparer la soirée</button>
+    <div id="iResultat" style="margin-top:12px"></div>
   </div>
 </dialog>
 
@@ -1391,6 +1448,105 @@ function proposerRepas() {
   renderMenuConfig();
 }
 $('mProposer').addEventListener('click', proposerRepas);
+
+// ---- Mode invités : checklist de soirée ----
+let soiree = lsGet('soiree', null);   // { nom, pers, plat, dessert, heure, coches }
+const fmtHeure = mins => {
+  const m = ((mins % 1440) + 1440) % 1440;
+  return `${String(Math.floor(m / 60)).padStart(2, '0')}h${String(m % 60).padStart(2, '0')}`;
+};
+function remplirChoix(id, type, vide, valeur) {
+  const liste = state.recipes.filter(r => r.type === type).sort((a, b) => String(a.titre).localeCompare(String(b.titre), 'fr'));
+  $(id).innerHTML = `<option value="">${vide}</option>` +
+    liste.map(r => `<option value="${esc(r.id)}" ${r.id === valeur ? 'selected' : ''}>${esc(r.titre)}</option>`).join('');
+}
+$('inviteBtn').addEventListener('click', () => {
+  const s = soiree || {};
+  remplirChoix('iPlat', 'sale', '— choisir —', s.plat);
+  remplirChoix('iDessert', 'sucre', '— pas de dessert —', s.dessert);
+  $('iNom').value = s.nom || '';
+  $('iPers').value = s.pers || 4;
+  $('iHeure').value = s.heure || '';
+  if (soiree) afficherSoiree(); else $('iResultat').innerHTML = '';
+  $('inviteDlg').showModal();
+});
+$('iGenerer').addEventListener('click', () => {
+  const plat = $('iPlat').value;
+  if (!plat) { alert('Choisis au moins un plat principal.'); return; }
+  soiree = {
+    nom: $('iNom').value.trim(),
+    pers: Math.max(1, Number($('iPers').value) || 1),
+    plat,
+    dessert: $('iDessert').value,
+    heure: $('iHeure').value,
+    coches: (soiree && soiree.coches) || {}
+  };
+  lsSet('soiree', soiree);
+  afficherSoiree();
+});
+function afficherSoiree() {
+  const s = soiree;
+  const plat = state.recipes.find(r => r.id === s.plat);
+  const dessert = state.recipes.find(r => r.id === s.dessert);
+  const ratioDe2 = r => { const base = Number(r.portions) || 0; return base ? s.pers / base : 1; };
+  let fin = null;
+  if (s.heure) { const [h, m] = s.heure.split(':').map(Number); fin = h * 60 + m; }
+  const quand = mins => fin === null ? '' : ` <span class="hint">vers ${fmtHeure(mins)}</span>`;
+  const cl = k => `soiree|${k}`;
+  const coche = k => !!(s.coches || {})[cl(k)];
+  const item = (k, html) => `<li><label><input type="checkbox" data-k="${esc(cl(k))}" ${coche(k) ? 'checked' : ''}><span class="${coche(k) ? 'done' : ''}">${html}</span></label></li>`;
+  const bloc = (titre, items) => items.length ? `<div class="fiche-jour"><h3>${titre}</h3><ul class="ing">${items.join('')}</ul></div>` : '';
+
+  const veille = [
+    item('v1', 'Faire les courses (liste plus bas)'),
+    item('v2', 'Sortir la vaisselle, les plats et le matériel')
+  ];
+  if (dessert) veille.push(item('v3', `Préparer le dessert si possible : ${esc(dessert.titre)}`));
+
+  const jour = [];
+  if (fin !== null) jour.push(item('j0', `Dresser la table${quand(fin - 45)}`));
+  if (plat) jour.push(item('j1', `Commencer ${esc(plat.titre)} (≈ ${plat.temps || 30} min)${quand(fin - 15 - (plat.temps || 30))}`));
+  if (dessert) jour.push(item('j2', `Finir le dessert : ${esc(dessert.titre)}${quand(fin - 30)}`));
+
+  const avant = [
+    item('a1', `Réchauffer ou finir le plat${quand(fin - 15)}`),
+    item('a2', 'Goûter et rectifier l’assaisonnement'),
+    item('a3', 'Allumer les bougies et servir à boire')
+  ];
+
+  // Courses : ingrédients à l'échelle du nombre d'invités, par rayon
+  const parRayon = {};
+  [plat, dessert].filter(Boolean).forEach(r => (r.ingredients || []).forEach((i, idx) => {
+    const rayon = rayonDe(i);
+    (parRayon[rayon] = parRayon[rayon] || []).push({ r, idx, texte: mettreALEchelle(i, ratioDe2(r)) });
+  }));
+  const ordre = [...RAYONS.map(x => x[0]), 'Autres'];
+  const listeCourses = ordre.filter(n => parRayon[n]).map(n => `
+    <div class="rayon"><h4>${esc(n)}</h4><ul class="ing">${parRayon[n].map(({ r, idx, texte }) =>
+      item(`c|${r.id}|${idx}`, `${esc(texte)} <em class="src">· ${esc(r.titre)}</em>`)).join('')}</ul></div>`).join('');
+
+  $('iResultat').innerHTML = `
+    <h2 class="menu-titre-liste" style="margin-top:0">${esc(s.nom || 'Ta soirée')} · ${s.pers} personne${s.pers > 1 ? 's' : ''}${s.heure ? ' · repas à ' + esc(s.heure.replace(':', 'h')) : ''}</h2>
+    ${bloc('La veille', veille)}
+    ${bloc('Le jour même', jour)}
+    ${bloc('Juste avant de servir', avant)}
+    <h2 class="menu-titre-liste">🛒 Courses</h2>
+    ${listeCourses || '<div class="vide">Aucun plat choisi.</div>'}
+    <div class="liste-actions"><button type="button" id="iNouvelle">Effacer la soirée</button></div>`;
+}
+$('iResultat').addEventListener('change', e => {
+  const cb = e.target.closest('input[type="checkbox"]'); if (!cb || !soiree) return;
+  soiree.coches = soiree.coches || {};
+  soiree.coches[cb.dataset.k] = cb.checked;
+  lsSet('soiree', soiree);
+  cb.parentElement.querySelector('span').classList.toggle('done', cb.checked);
+});
+$('iResultat').addEventListener('click', e => {
+  if (!e.target.closest('#iNouvelle')) return;
+  if (!confirm('Effacer la soirée en cours ?')) return;
+  soiree = null; lsSet('soiree', null);
+  $('iResultat').innerHTML = '';
+});
 
 // ---- Mode frigo : recettes à partir des ingrédients qu'on a déjà ----
 const sansAccents = s => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
