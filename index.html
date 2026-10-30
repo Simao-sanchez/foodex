@@ -86,6 +86,10 @@ select.sel{border:1px solid var(--line);background:var(--card);border-radius:999
 .pick{position:absolute;top:10px;right:10px;z-index:2;background:rgba(255,255,255,.92);color:#2b2622;border:none;border-radius:999px;padding:6px 11px;font-size:.82rem;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.15)}
 .pick[aria-pressed="true"]{background:var(--accent);color:#fff}
 
+.etoile{position:absolute;top:10px;left:10px;z-index:2;background:rgba(255,255,255,.92);color:#b8860b;border:none;border-radius:999px;padding:6px 11px;font-size:.88rem;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+.etoile[aria-pressed="true"]{background:#f6c945;color:#2b2622}
+.btn-etoile{background:var(--card);color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:9px 14px;font-weight:600;cursor:pointer}
+.btn-etoile[aria-pressed="true"]{background:#f6c945;color:#2b2622;border-color:#f6c945}
 .empty{grid-column:1/-1;text-align:center;color:var(--muted);padding:48px 12px;border:1px dashed var(--line);border-radius:18px}
 .empty strong{display:block;color:var(--fg);font-size:1.05rem;margin-bottom:6px}
 
@@ -184,6 +188,9 @@ textarea.f{min-height:88px;resize:vertical}
       <button class="chip" type="button" data-v="vegetarien" aria-pressed="false">Végétarien</button>
       <button class="chip" type="button" data-v="vegan" aria-pressed="false">Végan</button>
     </div>
+    <div class="group">
+      <button class="chip" id="souhaitsOnly" type="button" aria-pressed="false">★ Souhaits</button>
+    </div>
   </div>
 
   <div class="row2">
@@ -268,7 +275,7 @@ const EMOJI_CUISINE = {
   argentine:'🥩', 'ouest-africaine':'🍲'
 };
 
-const state = { recipes: [], type: 'tous', viande: 'tous', cuisine: 'tous', q: '', sort: 'titre' };
+const state = { recipes: [], type: 'tous', viande: 'tous', cuisine: 'tous', q: '', sort: 'titre', souhaitsOnly: false };
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const lines = v => String(v || '').split('\n').map(s => s.trim()).filter(Boolean);
@@ -328,6 +335,7 @@ function filtered() {
     if (state.type !== 'tous' && r.type !== state.type) return false;
     if (state.viande !== 'tous' && r.viande !== state.viande) return false;
     if (state.cuisine !== 'tous' && r.cuisine !== state.cuisine) return false;
+    if (state.souhaitsOnly && !souhaitsDe(r).length) return false;
     if (q) {
       const hay = [r.titre, r.cuisine, ...(r.ingredients || [])].join(' ').toLowerCase();
       if (!hay.includes(q)) return false;
@@ -370,6 +378,7 @@ function render() {
     ].filter(Boolean).join('');
     const preview = (r.ingredients || []).slice(0, 4).join(' · ');
     return `<article class="card" tabindex="0" data-id="${esc(r.id)}" role="button" aria-label="Ouvrir ${esc(r.titre)}">
+      <button class="etoile" type="button" data-etoile="${esc(r.id)}" aria-pressed="${estSouhait(r)}" title="Je veux refaire / essayer ça">${etoileLabel(r)}</button>
       <button class="pick" type="button" data-pick="${esc(r.id)}" aria-pressed="${picked}" title="Ajouter à la liste de courses">${picked ? '✓ Dans la liste' : '+ Liste'}</button>
       <div class="visu ${esc(r.type || 'sale')}">${visuHtml(r)}</div>
       <div class="card-body">
@@ -410,6 +419,8 @@ function togglePick(id) {
 }
 
 $('grid').addEventListener('click', e => {
+  const et = e.target.closest('[data-etoile]');
+  if (et) { e.stopPropagation(); toggleSouhait(et.dataset.etoile); return; }
   const pick = e.target.closest('[data-pick]');
   if (pick) { e.stopPropagation(); togglePick(pick.dataset.pick); return; }
   const c = e.target.closest('.card'); if (c) openRecipe(c.dataset.id);
@@ -529,6 +540,7 @@ function openRecipe(id) {
     ${r.source ? `<a class="src" href="${esc(r.source)}" target="_blank" rel="noopener">Voir la source ↗</a>` : ''}
     <div class="dlg-foot">
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <button class="btn-etoile" type="button" data-etoile="${esc(r.id)}" aria-pressed="${estSouhait(r)}">${etoileLabel(r)}</button>
         <button class="btn-ajout" type="button" data-pick="${esc(r.id)}" aria-pressed="${picked}">${picked ? '✓ Dans la liste' : '+ Ajouter à la liste de courses'}</button>
       </div>
       <span class="hint">${r.ajoute_par ? 'Ajouté par ' + esc(r.ajoute_par) : ''}${r.created_at ? ' · ' + dateFr(r.created_at) : ''}</span>
@@ -545,6 +557,8 @@ $('dBody').addEventListener('change', e => {
 });
 
 $('dBody').addEventListener('click', e => {
+  const et = e.target.closest('[data-etoile]');
+  if (et) { toggleSouhait(et.dataset.etoile); return; }
   const p = e.target.closest('[data-pick]');
   if (!p) return;
   togglePick(p.dataset.pick);
@@ -559,6 +573,57 @@ document.querySelectorAll('dialog').forEach(d => {
     if (e.target.closest('[data-close]') || e.target === d) d.close();
   });
 });
+
+// ---- Souhaits (étoiles, partagées entre les deux) ----
+$('souhaitsOnly').addEventListener('click', e => {
+  state.souhaitsOnly = !state.souhaitsOnly;
+  e.currentTarget.setAttribute('aria-pressed', String(state.souhaitsOnly));
+  render();
+});
+
+function monNom() {
+  let nom = lsGet('mon-nom', '');
+  if (!nom) {
+    nom = (prompt('Ton prénom (pour tes étoiles) :') || '').trim();
+    if (nom) lsSet('mon-nom', nom);
+  }
+  return nom;
+}
+function souhaitsDe(r) { return Array.isArray(r.souhaits) ? r.souhaits : []; }
+function estSouhait(r) { const n = lsGet('mon-nom', ''); return !!n && souhaitsDe(r).includes(n); }
+function etoileLabel(r) { const n = souhaitsDe(r).length; return (estSouhait(r) ? '★' : '☆') + (n ? ' ' + n : ''); }
+
+async function toggleSouhait(id) {
+  const r = state.recipes.find(x => x.id === id);
+  if (!r) return;
+  const nom = monNom();
+  if (!nom) return;
+  const avant = souhaitsDe(r).slice();
+  const apres = avant.includes(nom) ? avant.filter(n => n !== nom) : [...avant, nom];
+  r.souhaits = apres;
+  render();
+  majEtoileDetail(r);
+  try {
+    await api(`${TABLE}?id=eq.${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify({ souhaits: apres })
+    });
+  } catch (err) {
+    r.souhaits = avant;
+    render();
+    majEtoileDetail(r);
+    alert('Impossible d’enregistrer l’étoile : ' + err.message + '\n(La colonne « souhaits » existe-t-elle dans la base ?)');
+  }
+}
+
+function majEtoileDetail(r) {
+  const d = document.querySelector('#dBody [data-etoile]');
+  if (d && d.dataset.etoile === r.id) {
+    d.textContent = etoileLabel(r);
+    d.setAttribute('aria-pressed', String(estSouhait(r)));
+  }
+}
 
 // ---- Plat au hasard ----
 $('hasard').addEventListener('click', () => {
