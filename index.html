@@ -9,7 +9,7 @@
 :root{
   --bg:#fbf7f1; --card:#ffffff; --fg:#2b2622; --muted:#7d7168; --line:#ece4d9;
   --accent:#b5532c; --accent-2:#e9b949; --chip:#f3ece2; --shadow:0 6px 20px rgba(60,40,20,.08);
-  --sale:#2f7a5b; --sucre:#c2557a;
+  --sale:#2f7a5b; --sucre:#c2557a; --etoile:#f6c945;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
@@ -56,6 +56,7 @@ h1{font-size:clamp(1.6rem,4vw,2.1rem);margin:0;letter-spacing:-.01em}
 .chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
 .chip.sale[aria-pressed="true"]{background:var(--sale);border-color:var(--sale)}
 .chip.sucre[aria-pressed="true"]{background:var(--sucre);border-color:var(--sucre)}
+#souhaitsOnly[aria-pressed="true"]{background:var(--etoile);border-color:var(--etoile);color:#2b2622}
 select.sel{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:6px 12px;font-size:.88rem}
 .row2{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;align-items:center;justify-content:space-between}
 #count{color:var(--muted);font-size:.9rem}
@@ -85,11 +86,11 @@ select.sel{border:1px solid var(--line);background:var(--card);border-radius:999
 .foot{margin-top:auto;color:var(--muted);font-size:.8rem;display:flex;justify-content:space-between;gap:8px}
 .pick{position:absolute;top:10px;right:10px;z-index:2;background:rgba(255,255,255,.92);color:#2b2622;border:none;border-radius:999px;padding:6px 11px;font-size:.82rem;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.15)}
 .pick[aria-pressed="true"]{background:var(--accent);color:#fff}
-
-.etoile{position:absolute;top:10px;left:10px;z-index:2;background:rgba(255,255,255,.92);color:#b8860b;border:none;border-radius:999px;padding:6px 11px;font-size:.88rem;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.15)}
-.etoile[aria-pressed="true"]{background:#f6c945;color:#2b2622}
+.etoile{position:absolute;top:10px;left:10px;z-index:2;background:rgba(255,255,255,.92);color:#8a6a00;border:none;border-radius:999px;padding:6px 11px;font-size:.88rem;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+.etoile[aria-pressed="true"]{background:var(--etoile);color:#2b2622}
 .btn-etoile{background:var(--card);color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:9px 14px;font-weight:600;cursor:pointer}
-.btn-etoile[aria-pressed="true"]{background:#f6c945;color:#2b2622;border-color:#f6c945}
+.btn-etoile[aria-pressed="true"]{background:var(--etoile);color:#2b2622;border-color:var(--etoile)}
+
 .empty{grid-column:1/-1;text-align:center;color:var(--muted);padding:48px 12px;border:1px dashed var(--line);border-radius:18px}
 .empty strong{display:block;color:var(--fg);font-size:1.05rem;margin-bottom:6px}
 
@@ -122,14 +123,26 @@ h3{font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--acc
 .btn-ajout[aria-pressed="true"]{background:var(--chip);color:var(--fg);border:1px solid var(--line)}
 .hint{font-size:.8rem;color:var(--muted)}
 
-/* Liste de courses */
-.liste-recette{margin-bottom:18px}
-.liste-recette h3{margin:0 0 6px;display:flex;justify-content:space-between;align-items:center;gap:10px}
-.liste-recette .retirer{background:none;border:none;color:var(--muted);cursor:pointer;text-decoration:underline;font-size:.8rem;text-transform:none;letter-spacing:0}
-.liste-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-.liste-actions button{border:1px solid var(--line);background:var(--chip);border-radius:10px;padding:9px 14px;cursor:pointer;font-weight:600}
-.liste-actions button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
-.vide{color:var(--muted);text-align:center;padding:24px 0}
+/* Portions */
+.portions{display:flex;align-items:center;gap:10px;margin-top:12px}
+.portions button{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--chip);cursor:pointer;font-size:1.1rem;font-weight:700}
+.portions button:disabled{opacity:.4;cursor:default}
+.portions span{font-weight:600;min-width:90px;text-align:center}
+
+/* Mode cuisine */
+dialog.plein{width:100vw;height:100vh;max-width:none;max-height:none;border-radius:0;overflow:auto}
+.c-wrap{display:flex;flex-direction:column;min-height:100vh;padding:20px 22px;max-width:760px;margin:0 auto}
+.c-top{display:flex;justify-content:space-between;align-items:center;gap:12px;color:var(--muted);font-size:.95rem}
+.c-wrap h2{font-size:1.2rem;margin:10px 0 0;color:var(--muted);font-weight:600}
+.c-texte{flex:1;display:flex;align-items:center;font-size:clamp(1.4rem,4.5vw,2.1rem);line-height:1.5;padding:24px 0;white-space:pre-wrap}
+.c-nav{display:flex;gap:10px}
+.c-nav button{flex:1;border:1px solid var(--line);background:var(--chip);border-radius:14px;padding:16px;font-size:1.05rem;font-weight:700;cursor:pointer}
+.c-nav button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.c-nav button:disabled{opacity:.4;cursor:default}
+.c-ing{margin-top:16px;color:var(--fg)}
+.c-ing summary{cursor:pointer;color:var(--accent);font-weight:600}
+.c-ing ul{padding-left:20px;margin:8px 0 0}
+.c-ing li{margin-bottom:4px}
 
 /* Formulaire */
 .form-grid{display:grid;gap:12px;grid-template-columns:1fr 1fr}
@@ -142,6 +155,15 @@ textarea.f{min-height:88px;resize:vertical}
 .submit:disabled{opacity:.55;cursor:wait}
 .msg{font-size:.88rem;margin-top:10px;color:var(--muted);min-height:1.2em}
 .msg.err{color:#c0392b}
+
+/* Liste de courses */
+.liste-recette{margin-bottom:18px}
+.liste-recette h3{margin:0 0 6px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.liste-recette .retirer{background:none;border:none;color:var(--muted);cursor:pointer;text-decoration:underline;font-size:.8rem;text-transform:none;letter-spacing:0}
+.liste-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.liste-actions button{border:1px solid var(--line);background:var(--chip);border-radius:10px;padding:9px 14px;cursor:pointer;font-weight:600}
+.liste-actions button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.vide{color:var(--muted);text-align:center;padding:24px 0}
 
 /* Chargement */
 .skeleton{background:linear-gradient(90deg,var(--card),var(--chip),var(--card));background-size:200% 100%;animation:sh 1.2s infinite;border-radius:18px;height:200px;border:1px solid var(--line)}
@@ -216,6 +238,26 @@ textarea.f{min-height:88px;resize:vertical}
   <div class="dlg" id="dBody"></div>
 </dialog>
 
+<!-- Mode cuisine -->
+<dialog id="cuisineDlg" class="plein" aria-label="Mode cuisine">
+  <div class="c-wrap">
+    <div class="c-top">
+      <span id="cProg"></span>
+      <button class="x" id="cClose" type="button" aria-label="Quitter le mode cuisine">✕</button>
+    </div>
+    <h2 id="cTitre"></h2>
+    <div class="c-texte" id="cTexte"></div>
+    <div class="c-nav">
+      <button id="cPrev" type="button">← Précédent</button>
+      <button id="cNext" type="button" class="primary">Suivant →</button>
+    </div>
+    <details class="c-ing">
+      <summary>Ingrédients</summary>
+      <ul id="cIng"></ul>
+    </details>
+  </div>
+</dialog>
+
 <!-- Liste de courses -->
 <dialog id="listeDlg" aria-labelledby="lTitle">
   <div class="dlg">
@@ -276,13 +318,14 @@ const EMOJI_CUISINE = {
 };
 
 const state = { recipes: [], type: 'tous', viande: 'tous', cuisine: 'tous', q: '', sort: 'titre', souhaitsOnly: false };
+const portionsChoisies = {};   // { id: nombre de personnes voulu } (en mémoire)
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const lines = v => String(v || '').split('\n').map(s => s.trim()).filter(Boolean);
 const dateFr = iso => iso ? new Date(iso).toLocaleDateString('fr-FR', {day:'numeric', month:'short'}) : '';
 const emojiFor = r => EMOJI_CUISINE[r.cuisine] || (r.type === 'sucre' ? '🍰' : '🍽️');
 
-// ---- Stockage local (sélection et cases cochées), tolérant aux erreurs ----
+// ---- Stockage local (sélection, cases cochées, prénom), tolérant aux erreurs ----
 function lsGet(key, fallback) { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } }
 function lsSet(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch {} }
 
@@ -410,6 +453,57 @@ function bindGroup(id, key) {
 bindGroup('fType', 'type');
 bindGroup('fViande', 'viande');
 
+$('souhaitsOnly').addEventListener('click', e => {
+  state.souhaitsOnly = !state.souhaitsOnly;
+  e.currentTarget.setAttribute('aria-pressed', String(state.souhaitsOnly));
+  render();
+});
+
+// ---- Souhaits (étoiles partagées entre les deux) ----
+function monNom() {
+  let nom = lsGet('mon-nom', '');
+  if (!nom) {
+    nom = (prompt('Ton prénom (pour tes étoiles) :') || '').trim();
+    if (nom) lsSet('mon-nom', nom);
+  }
+  return nom;
+}
+function souhaitsDe(r) { return Array.isArray(r.souhaits) ? r.souhaits : []; }
+function estSouhait(r) { const n = lsGet('mon-nom', ''); return !!n && souhaitsDe(r).includes(n); }
+function etoileLabel(r) { const n = souhaitsDe(r).length; return (estSouhait(r) ? '★' : '☆') + (n ? ' ' + n : ''); }
+
+async function toggleSouhait(id) {
+  const r = state.recipes.find(x => x.id === id);
+  if (!r) return;
+  const nom = monNom();
+  if (!nom) return;
+  const avant = souhaitsDe(r).slice();
+  const apres = avant.includes(nom) ? avant.filter(n => n !== nom) : [...avant, nom];
+  r.souhaits = apres;
+  render();
+  majEtoileDetail(r);
+  try {
+    await api(`${TABLE}?id=eq.${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify({ souhaits: apres })
+    });
+  } catch (err) {
+    r.souhaits = avant;
+    render();
+    majEtoileDetail(r);
+    alert('Impossible d’enregistrer l’étoile : ' + err.message + '\n(La colonne « souhaits » existe-t-elle dans la base ?)');
+  }
+}
+
+function majEtoileDetail(r) {
+  const d = document.querySelector('#dBody [data-etoile]');
+  if (d && d.dataset.etoile === r.id) {
+    d.textContent = etoileLabel(r);
+    d.setAttribute('aria-pressed', String(estSouhait(r)));
+  }
+}
+
 // ---- Sélection pour la liste de courses ----
 function togglePick(id) {
   selection = selection.includes(id) ? selection.filter(x => x !== id) : [...selection, id];
@@ -430,6 +524,26 @@ $('grid').addEventListener('keydown', e => {
     e.preventDefault(); openRecipe(e.target.dataset.id);
   }
 });
+
+// ---- Mise à l'échelle des quantités ----
+function formatNum(x) {
+  const r = Math.round(x * 10) / 10;
+  return String(r).replace('.', ',');
+}
+// Multiplie le premier nombre trouvé dans le texte (ex. « Beurre : 150 g » → « 225 g »).
+function mettreALEchelle(texte, ratio) {
+  if (!ratio || ratio === 1) return texte;
+  return texte.replace(/(\d+(?:[.,]\d+)?(?:\s*\/\s*\d+)?)/, m => {
+    const frac = m.match(/^(\d+)\s*\/\s*(\d+)$/);
+    const v = frac ? Number(frac[1]) / Number(frac[2]) : Number(m.replace(',', '.'));
+    return formatNum(v * ratio);
+  });
+}
+function ratioDe(r) {
+  const base = Number(r.portions) || 0;
+  const voulu = portionsChoisies[r.id] ?? base;
+  return base ? voulu / base : 1;
+}
 
 // ---- Liste de courses ----
 function renderListe() {
@@ -505,22 +619,32 @@ function openRecipe(id) {
   const r = state.recipes.find(x => x.id === id);
   if (!r) return;
   const picked = selection.includes(r.id);
+  const ratio = ratioDe(r);
+  const base = Number(r.portions) || 0;
+  const voulu = portionsChoisies[r.id] ?? base;
+
   const ing = (r.ingredients || []).map((i, idx) => {
     const ok = !!coches[`${r.id}|${idx}`];
     return `<li><label>
       <input type="checkbox" data-idx="${idx}" data-id="${esc(r.id)}" ${ok ? 'checked' : ''}>
-      <span class="${ok ? 'done' : ''}">${esc(i)}</span>
+      <span class="${ok ? 'done' : ''}">${esc(mettreALEchelle(i, ratio))}</span>
     </label></li>`;
   }).join('');
   const steps = (r.etapes || []).map(s => `<li><div>${esc(s)}</div></li>`).join('');
   const facts = [
     r.temps && `<div class="fact"><b>${esc(r.temps)} min</b><span>Temps</span></div>`,
-    r.portions && `<div class="fact"><b>${esc(r.portions)}</b><span>Personnes</span></div>`,
+    base && `<div class="fact"><b>${esc(base)}</b><span>Personnes</span></div>`,
     r.difficulte && `<div class="fact"><b>${esc(r.difficulte)}</b><span>Difficulté</span></div>`
   ].filter(Boolean).join('');
   const photo = r.image_url
     ? `<div class="dlg-photo"><img src="${esc(r.image_url)}" alt="${esc(r.titre)}"></div>`
     : `<div class="dlg-photo visu ${esc(r.type || 'sale')}">${emojiFor(r)}</div>`;
+  const portionsHtml = base ? `
+    <div class="portions" aria-label="Nombre de personnes">
+      <button type="button" data-p="-1" ${voulu <= 1 ? 'disabled' : ''} aria-label="Moins de personnes">−</button>
+      <span>${voulu} personne${voulu > 1 ? 's' : ''}</span>
+      <button type="button" data-p="1" aria-label="Plus de personnes">+</button>
+    </div>` : '';
 
   $('dBody').innerHTML = `
     ${photo}
@@ -534,6 +658,7 @@ function openRecipe(id) {
       ${r.cuisine ? `<span class="badge">${esc(r.cuisine)}</span>` : ''}
     </div>
     ${facts ? `<div class="facts">${facts}</div>` : ''}
+    ${portionsHtml}
     ${ing ? `<h3>Ingrédients</h3><ul class="ing">${ing}</ul>` : ''}
     ${steps ? `<h3>Étapes</h3><ol class="steps">${steps}</ol>` : ''}
     ${r.notes ? `<h3>Notes</h3><div class="notes">${esc(r.notes)}</div>` : ''}
@@ -542,10 +667,11 @@ function openRecipe(id) {
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
         <button class="btn-etoile" type="button" data-etoile="${esc(r.id)}" aria-pressed="${estSouhait(r)}">${etoileLabel(r)}</button>
         <button class="btn-ajout" type="button" data-pick="${esc(r.id)}" aria-pressed="${picked}">${picked ? '✓ Dans la liste' : '+ Ajouter à la liste de courses'}</button>
+        <button class="btn-ajout" type="button" data-cuisine="${esc(r.id)}">👩‍🍳 Mode cuisine</button>
       </div>
       <span class="hint">${r.ajoute_par ? 'Ajouté par ' + esc(r.ajoute_par) : ''}${r.created_at ? ' · ' + dateFr(r.created_at) : ''}</span>
     </div>`;
-  $('detail').showModal();
+  if (!$('detail').open) $('detail').showModal();
 }
 
 $('dBody').addEventListener('change', e => {
@@ -559,6 +685,20 @@ $('dBody').addEventListener('change', e => {
 $('dBody').addEventListener('click', e => {
   const et = e.target.closest('[data-etoile]');
   if (et) { toggleSouhait(et.dataset.etoile); return; }
+
+  const pn = e.target.closest('[data-p]');
+  if (pn) {
+    const r = state.recipes.find(x => x.id === $('dBody').querySelector('[data-pick]').dataset.pick);
+    if (!r) return;
+    const actuel = portionsChoisies[r.id] ?? Number(r.portions);
+    portionsChoisies[r.id] = Math.max(1, actuel + Number(pn.dataset.p));
+    openRecipe(r.id);
+    return;
+  }
+
+  const cu = e.target.closest('[data-cuisine]');
+  if (cu) { openCuisine(cu.dataset.cuisine); return; }
+
   const p = e.target.closest('[data-pick]');
   if (!p) return;
   togglePick(p.dataset.pick);
@@ -567,63 +707,64 @@ $('dBody').addEventListener('click', e => {
   p.textContent = picked ? '✓ Dans la liste' : '+ Ajouter à la liste de courses';
 });
 
+// ---- Mode cuisine ----
+let cuisineR = null, cuisineI = 0, cuisineRatio = 1, wakeLock = null;
+
+function openCuisine(id) {
+  const r = state.recipes.find(x => x.id === id);
+  if (!r) return;
+  cuisineR = r;
+  cuisineI = 0;
+  cuisineRatio = ratioDe(r);
+  $('cIng').innerHTML = (r.ingredients || []).map(i => `<li>${esc(mettreALEchelle(i, cuisineRatio))}</li>`).join('');
+  renderCuisine();
+  if (!$('cuisineDlg').open) $('cuisineDlg').showModal();
+  prendreEcran();
+}
+
+function renderCuisine() {
+  const r = cuisineR;
+  const steps = r.etapes || [];
+  const n = steps.length;
+  $('cTitre').textContent = r.titre;
+  $('cProg').textContent = n ? `Étape ${cuisineI + 1} / ${n}` : '';
+  $('cTexte').textContent = n ? steps[cuisineI] : 'Pas d’étapes renseignées pour cette recette.';
+  $('cPrev').disabled = cuisineI === 0;
+  $('cNext').textContent = (!n || cuisineI >= n - 1) ? 'Terminé ✓' : 'Suivant →';
+}
+
+$('cPrev').addEventListener('click', () => { if (cuisineI > 0) { cuisineI--; renderCuisine(); } });
+$('cNext').addEventListener('click', () => {
+  const n = (cuisineR?.etapes || []).length;
+  if (!n || cuisineI >= n - 1) { $('cuisineDlg').close(); return; }
+  cuisineI++;
+  renderCuisine();
+});
+$('cClose').addEventListener('click', () => $('cuisineDlg').close());
+
+document.addEventListener('keydown', e => {
+  if (!$('cuisineDlg').open) return;
+  if (e.key === 'ArrowRight') $('cNext').click();
+  if (e.key === 'ArrowLeft') $('cPrev').click();
+});
+
+// Garder l'écran allumé pendant la cuisine (si le navigateur le permet)
+async function prendreEcran() {
+  try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch {}
+}
+function relacherEcran() {
+  try { if (wakeLock) wakeLock.release(); } catch {}
+  wakeLock = null;
+}
+$('cuisineDlg').addEventListener('close', relacherEcran);
+document.addEventListener('visibilitychange', () => { if (!document.hidden && $('cuisineDlg').open) prendreEcran(); });
+
 // Fermer les fenêtres via le bouton ✕ ou un clic sur le fond
 document.querySelectorAll('dialog').forEach(d => {
   d.addEventListener('click', e => {
     if (e.target.closest('[data-close]') || e.target === d) d.close();
   });
 });
-
-// ---- Souhaits (étoiles, partagées entre les deux) ----
-$('souhaitsOnly').addEventListener('click', e => {
-  state.souhaitsOnly = !state.souhaitsOnly;
-  e.currentTarget.setAttribute('aria-pressed', String(state.souhaitsOnly));
-  render();
-});
-
-function monNom() {
-  let nom = lsGet('mon-nom', '');
-  if (!nom) {
-    nom = (prompt('Ton prénom (pour tes étoiles) :') || '').trim();
-    if (nom) lsSet('mon-nom', nom);
-  }
-  return nom;
-}
-function souhaitsDe(r) { return Array.isArray(r.souhaits) ? r.souhaits : []; }
-function estSouhait(r) { const n = lsGet('mon-nom', ''); return !!n && souhaitsDe(r).includes(n); }
-function etoileLabel(r) { const n = souhaitsDe(r).length; return (estSouhait(r) ? '★' : '☆') + (n ? ' ' + n : ''); }
-
-async function toggleSouhait(id) {
-  const r = state.recipes.find(x => x.id === id);
-  if (!r) return;
-  const nom = monNom();
-  if (!nom) return;
-  const avant = souhaitsDe(r).slice();
-  const apres = avant.includes(nom) ? avant.filter(n => n !== nom) : [...avant, nom];
-  r.souhaits = apres;
-  render();
-  majEtoileDetail(r);
-  try {
-    await api(`${TABLE}?id=eq.${encodeURIComponent(id)}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-      body: JSON.stringify({ souhaits: apres })
-    });
-  } catch (err) {
-    r.souhaits = avant;
-    render();
-    majEtoileDetail(r);
-    alert('Impossible d’enregistrer l’étoile : ' + err.message + '\n(La colonne « souhaits » existe-t-elle dans la base ?)');
-  }
-}
-
-function majEtoileDetail(r) {
-  const d = document.querySelector('#dBody [data-etoile]');
-  if (d && d.dataset.etoile === r.id) {
-    d.textContent = etoileLabel(r);
-    d.setAttribute('aria-pressed', String(estSouhait(r)));
-  }
-}
 
 // ---- Plat au hasard ----
 $('hasard').addEventListener('click', () => {
@@ -635,6 +776,9 @@ $('hasard').addEventListener('click', () => {
   const r = sales[Math.floor(Math.random() * sales.length)];
   openRecipe(r.id);
 });
+
+// ---- Liste : ouverture ----
+// (voir plus haut : $('openListe'))
 
 // ---- Ajout ----
 $('openAdd').addEventListener('click', () => {
