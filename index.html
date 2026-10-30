@@ -41,7 +41,15 @@ h1{font-size:clamp(1.6rem,4vw,2.1rem);margin:0;letter-spacing:-.01em}
 .btn-add:hover,.btn-liste:hover{filter:brightness(1.05)}
 
 /* Plat au hasard */
-.hasard{display:flex;justify-content:center;margin:0 0 16px}
+.hasard{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:0 0 16px}
+.q-opts{display:grid;gap:10px;margin-top:22px}
+.q-opts button{padding:16px 18px;border-radius:14px;border:1px solid var(--line);background:var(--card);font-size:1.1rem;font-weight:600;cursor:pointer;text-align:left;box-shadow:var(--shadow)}
+.q-opts button:hover{border-color:var(--accent)}
+.q-res{margin-top:20px;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;box-shadow:var(--shadow)}
+.q-res h2{font-size:1.3rem}
+.q-act{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.q-act button{border:1px solid var(--line);background:var(--chip);border-radius:10px;padding:10px 14px;cursor:pointer;font-weight:600}
+.q-act button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
 .btn-hasard{background:var(--card);color:var(--fg);border:1px solid var(--accent);border-radius:999px;padding:10px 20px;font-weight:600;cursor:pointer;box-shadow:var(--shadow)}
 .btn-hasard:hover{background:var(--accent);color:#fff}
 
@@ -190,6 +198,7 @@ textarea.f{min-height:88px;resize:vertical}
   </header>
 
   <div class="hasard">
+    <button class="btn-hasard" id="trouver" type="button">🧭 Trouve-moi une recette</button>
     <button class="btn-hasard" id="hasard" type="button">🎲 Un plat salé au hasard</button>
   </div>
 
@@ -255,6 +264,19 @@ textarea.f{min-height:88px;resize:vertical}
       <summary>Ingrédients</summary>
       <ul id="cIng"></ul>
     </details>
+  </div>
+</dialog>
+
+<!-- Trouve-moi une recette -->
+<dialog id="quizDlg" class="plein" aria-label="Trouve-moi une recette">
+  <div class="c-wrap">
+    <div class="c-top">
+      <span id="qProg"></span>
+      <button class="x" type="button" data-close aria-label="Fermer">✕</button>
+    </div>
+    <h2 id="qQuestion" style="color:var(--fg);font-size:1.6rem;margin-top:24px"></h2>
+    <div id="qOpts" class="q-opts"></div>
+    <div id="qRes"></div>
   </div>
 </dialog>
 
@@ -765,6 +787,130 @@ document.querySelectorAll('dialog').forEach(d => {
     if (e.target.closest('[data-close]') || e.target === d) d.close();
   });
 });
+
+// ---- Trouve-moi une recette (questionnaire) ----
+const QUESTIONS = [
+  { cle: 'type', q: 'Tu as envie de quoi ?', opts: [['sale','Du salé'], ['sucre','Du sucré'], ['tous','Peu importe']] },
+  { cle: 'piment', q: 'Plutôt piquant ?', si: () => quiz.rep.type !== 'sucre',
+    opts: [['oui','Oui, qui pique'], ['non','Non, plutôt doux'], ['tous','Peu importe']] },
+  { cle: 'chocolat', q: 'Du chocolat ?', si: () => quiz.rep.type === 'sucre',
+    opts: [['oui','Oui !'], ['non','Non'], ['tous','Peu importe']] },
+  { cle: 'envie', q: 'Tu as envie de…', si: () => quiz.rep.type !== 'sucre',
+    opts: [['viande','De la viande'], ['poisson','Du poisson'], ['legumes','Des légumes'], ['leger','Un truc léger'], ['tous','Peu importe']] }
+];
+let quiz = { rep: {}, pos: 0, liste: [], choix: null, relax: false };
+
+const texteRecette = r => [r.titre, r.notes, ...(r.ingredients || [])].join(' ');
+const estPiquant = r => /piment|piquant|gochujang|curry|harissa|sriracha|toubanjan|la-yu|tabasco|chili/i.test(texteRecette(r));
+const estChoco = r => /chocolat|cacao/i.test(texteRecette(r));
+const estLeger = r => (r.temps && r.temps <= 30) || /salade|légume|soupe|tofu|concombre|bouillon|poisson|taboul/i.test(texteRecette(r));
+
+function correspond(r, rep) {
+  if (rep.type && rep.type !== 'tous' && r.type !== rep.type) return false;
+  if (rep.piment && rep.piment !== 'tous' && (rep.piment === 'oui') !== estPiquant(r)) return false;
+  if (rep.chocolat && rep.chocolat !== 'tous' && (rep.chocolat === 'oui') !== estChoco(r)) return false;
+  if (rep.envie && rep.envie !== 'tous') {
+    const e = rep.envie;
+    const ok = e === 'viande' ? r.viande === 'viande'
+      : e === 'poisson' ? r.viande === 'poisson'
+      : e === 'legumes' ? (r.viande === 'vegetarien' || r.viande === 'vegan')
+      : e === 'leger' ? estLeger(r) : true;
+    if (!ok) return false;
+  }
+  return true;
+}
+
+function quizCalcul() {
+  let rep = { ...quiz.rep };
+  let liste = state.recipes.filter(r => correspond(r, rep));
+  let relax = false;
+  // Si rien ne correspond, on relâche les réponses une à une
+  for (const k of ['envie', 'piment', 'chocolat']) {
+    if (liste.length) break;
+    delete rep[k];
+    relax = true;
+    liste = state.recipes.filter(r => correspond(r, rep));
+  }
+  quiz.liste = liste;
+  quiz.relax = relax;
+  quiz.choix = liste.length ? liste[Math.floor(Math.random() * liste.length)] : null;
+}
+
+function quizStart() {
+  quiz = { rep: {}, pos: 0, liste: [], choix: null, relax: false };
+  quizRender();
+  if (!$('quizDlg').open) $('quizDlg').showModal();
+}
+
+function quizRender() {
+  const actives = QUESTIONS.filter(q => !q.si || q.si());
+  if (quiz.pos < actives.length) {
+    const q = actives[quiz.pos];
+    $('qProg').textContent = `Question ${quiz.pos + 1} / ${actives.length}`;
+    $('qQuestion').textContent = q.q;
+    $('qOpts').innerHTML = q.opts.map(([v, l]) =>
+      `<button type="button" data-cle="${q.cle}" data-v="${v}">${l}</button>`).join('');
+    $('qRes').innerHTML = '';
+  } else {
+    quizResultat();
+  }
+}
+
+function quizResultat(recalculer = true) {
+  if (recalculer) quizCalcul();
+  const r = quiz.choix;
+  $('qProg').textContent = 'Résultat';
+  $('qOpts').innerHTML = '';
+  if (!r) {
+    $('qQuestion').textContent = 'Aucune recette ne correspond';
+    $('qRes').innerHTML = `<div class="q-res">Essaie d'autres réponses.</div>
+      <div class="q-act"><button type="button" id="qRecommencer">Recommencer</button></div>`;
+    return;
+  }
+  $('qQuestion').textContent = 'Voici ce que je te propose';
+  const badges = [
+    r.type && `<span class="badge ${esc(r.type)}">${LABEL_TYPE[r.type] || ''}</span>`,
+    r.viande && `<span class="badge">${LABEL_VIANDE[r.viande] || ''}</span>`,
+    r.cuisine && `<span class="badge">${esc(r.cuisine)}</span>`,
+    r.temps && `<span class="badge">${esc(r.temps)} min</span>`
+  ].filter(Boolean).join('');
+  $('qRes').innerHTML = `<div class="q-res">
+    ${quiz.relax ? '<div class="hint" style="margin-bottom:8px">Rien d’exact : voici une proposition proche.</div>' : ''}
+    <div class="visu ${esc(r.type || 'sale')}" style="border-radius:14px;margin-bottom:12px">${visuHtml(r)}</div>
+    <h2 style="margin:0 0 8px">${esc(r.titre)}</h2>
+    <div class="badges">${badges}</div>
+    <div class="q-act">
+      <button class="primary" type="button" id="qVoir">Voir la recette</button>
+      <button type="button" id="qAutre">Une autre idée</button>
+      <button type="button" id="qRecommencer">Recommencer</button>
+    </div>
+  </div>`;
+}
+
+$('qOpts').addEventListener('click', e => {
+  const b = e.target.closest('button[data-cle]');
+  if (!b) return;
+  quiz.rep[b.dataset.cle] = b.dataset.v;
+  quiz.pos++;
+  quizRender();
+});
+
+$('qRes').addEventListener('click', e => {
+  if (e.target.closest('#qRecommencer')) { quizStart(); return; }
+  if (e.target.closest('#qVoir') && quiz.choix) {
+    const id = quiz.choix.id;
+    $('quizDlg').close();
+    openRecipe(id);
+    return;
+  }
+  if (e.target.closest('#qAutre')) {
+    const autres = quiz.liste.filter(r => r.id !== quiz.choix?.id);
+    if (autres.length) quiz.choix = autres[Math.floor(Math.random() * autres.length)];
+    quizResultat(false);
+  }
+});
+
+$('trouver').addEventListener('click', quizStart);
 
 // ---- Plat au hasard ----
 $('hasard').addEventListener('click', () => {
