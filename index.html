@@ -1201,7 +1201,34 @@ const TAGS = {
   'Tteokkochi (brochettes de tteok, sauce gochujang)': {p:1,c:0,l:0},
   'Viande de blé (seitan maison)': {p:0,c:0,l:0},
   'Vinaigrette au sésame': {p:0,c:0,l:1},
-  'Zunda Mochi fait maison aux edamames': {p:0,c:0,l:0}
+  'Zunda Mochi fait maison aux edamames': {p:0,c:0,l:0},
+  // Recettes ajoutées ensuite
+  'Dahl indien aux lentilles corail': {p:0,c:0,l:0},
+  'Houmous': {p:0,c:0,l:1},
+  'Naan maison': {p:0,c:0,l:0},
+  'Pad thai': {p:0,c:0,l:0},
+  'Pastilla au poulet': {p:0,c:0,l:0},
+  'Couscous au poulet et légumes': {p:0,c:0,l:1},
+  'Curry jaune thaï au poulet': {p:1,c:0,l:0},
+  'Chili con carne': {p:1,c:0,l:0},
+  'Porc aux cinq épices': {p:0,c:0,l:0},
+  'Poulet teriyaki': {p:0,c:0,l:0},
+  'Sauce teriyaki': {p:0,c:0,l:0},
+  'Poulet frit coréen': {p:1,c:0,l:0},
+  'Katsudon': {p:0,c:0,l:0},
+  'Kare japonais au poulet ou au boeuf': {p:0,c:0,l:0},
+  'Risotto aux champignons': {p:0,c:0,l:0},
+  'Salade de pommes de terre': {p:0,c:0,l:1},
+  'Salade de pâtes': {p:0,c:0,l:1},
+  'Kebab maison': {p:0,c:0,l:0},
+  'Crevettes ail, gingembre, coriandre et citron': {p:0,c:0,l:1},
+  'Rouleaux de printemps': {p:0,c:0,l:1},
+  'Bánh mì au porc': {p:0,c:0,l:0},
+  'Gratin de morue et pommes de terre (Bacalhau à Gomes de Sá)': {p:0,c:0,l:0},
+  'Magret de canard croustillant': {p:0,c:0,l:0},
+  'Porc aux champignons, sauce hoisin': {p:0,c:0,l:0},
+  'Coquillettes à la Sanchez': {p:0,c:0,l:0},
+  'Salade de riz': {p:0,c:0,l:1}
 };
 const etiquette = (r, k) => { const t = TAGS[r.titre]; return t ? !!t[k] : null; };
 const estPiquant = r => etiquette(r, 'p') ?? /piment|piquant|gochujang|curry|harissa|sriracha|toubanjan|la-yu|tabasco|chili/i.test(texteRecette(r));
