@@ -1598,10 +1598,16 @@ function renderBilan() {
     ? `Bilan de la semaine : ${txt} (${plats.length} plat${plats.length > 1 ? 's' : ''} salé${plats.length > 1 ? 's' : ''})`
     : 'Bilan de la semaine : aucun plat salé prévu pour l’instant';
 }
+// Accompagnements et préparations qu'on ne veut pas voir proposés comme plat principal
+const NON_PROPOSES = [
+  'Pickles de courgette',
+  'Terrine de foie de porc',
+  'Houmous'
+];
 // Remplit les repas salés vides en privilégiant la catégorie (viande, poisson, végé, végan) la moins présente
 function proposerRepas() {
   if (!menu.mode) { alert('Choisis d’abord travail ou vacances.'); return; }
-  const recettes = state.recipes.filter(r => r.type === 'sale' && r.viande in { viande: 1, poisson: 1, vegetarien: 1, vegan: 1 } && !estSauce(r));
+  const recettes = state.recipes.filter(r => r.type === 'sale' && r.viande in { viande: 1, poisson: 1, vegetarien: 1, vegan: 1 } && !estSauce(r) && !NON_PROPOSES.includes(r.titre));
   if (!recettes.length) { alert('Pas assez de plats salés pour proposer.'); return; }
   const deja = new Set(plansDeLaSemaine().map(p => p.id));
   const compte = { viande: 0, poisson: 0, vegetarien: 0, vegan: 0 };
