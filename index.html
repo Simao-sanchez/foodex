@@ -310,6 +310,7 @@ textarea.f{min-height:88px;resize:vertical}
     <div class="group">
       <button class="chip" id="souhaitsOnly" type="button" aria-pressed="false">★ Souhaits</button>
       <button class="chip" id="saisonOnly" type="button" aria-pressed="false">🌿 De saison d'abord</button>
+      <button class="chip" id="bebeOnly" type="button" aria-pressed="false">👶 Bébé</button>
     </div>
   </div>
 
@@ -588,6 +589,7 @@ function filtered() {
     if (state.viande !== 'tous' && r.viande !== state.viande) return false;
     if (state.cuisine !== 'tous' && r.cuisine !== state.cuisine) return false;
     if (state.souhaitsOnly && !souhaitsDe(r).length) return false;
+    if (state.bebe && !estBebe(r)) return false;
     if (q) {
       const hay = [r.titre, r.cuisine, ...(r.ingredients || [])].join(' ').toLowerCase();
       if (!hay.includes(q)) return false;
@@ -1743,6 +1745,16 @@ function estDeSaison(r) {
     return mots.some(m => new RegExp('\\b' + m).test(n));
   });
 }
+// ---- Catégorie bébé : recettes adaptées aux bébés (liste par titre) ----
+const RECETTES_BEBE = [
+  'Ramen bébé aux épinards et crevettes'
+];
+const estBebe = r => RECETTES_BEBE.includes(r.titre);
+$('bebeOnly').addEventListener('click', e => {
+  state.bebe = !state.bebe;
+  e.currentTarget.setAttribute('aria-pressed', String(state.bebe));
+  render();
+});
 $('saisonOnly').addEventListener('click', e => {
   state.saison = !state.saison;
   e.currentTarget.setAttribute('aria-pressed', String(state.saison));
